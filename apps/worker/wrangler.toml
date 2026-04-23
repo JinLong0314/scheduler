@@ -1,0 +1,42 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "kairo-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 — bindings populated by `kairo init`
+[[d1_databases]]
+binding = "DB"
+database_name = "kairo_db"
+database_id = "PLACEHOLDER_DB_ID"
+migrations_dir = "migrations"
+
+# KV — session store + config cache
+[[kv_namespaces]]
+binding = "KV"
+id = "PLACEHOLDER_KV_ID"
+
+# R2 — attachments & backups
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "kairo-attachments"
+
+# Queues (optional, for reminders). Comment out until created.
+# [[queues.producers]]
+# queue = "kairo-reminders"
+# binding = "REMINDERS_Q"
+
+# Cron — daily rollover of uncompleted todos (02:00 UTC+8 = 18:00 UTC)
+[triggers]
+crons = ["0 18 * * *"]
+
+[vars]
+ENV = "dev"
+
+# Secrets (DO NOT put values here; use `wrangler secret put`):
+#   SESSION_SECRET       — HMAC key for CSRF tokens
+#   ADMIN_SETUP_TOKEN    — one-shot token printed by CLI
+#   TURNSTILE_SECRET     — CF Turnstile secret
+#   OAUTH_GITHUB_ID / OAUTH_GITHUB_SECRET
+#   OAUTH_GOOGLE_ID / OAUTH_GOOGLE_SECRET
+#   VAPID_PUBLIC / VAPID_PRIVATE

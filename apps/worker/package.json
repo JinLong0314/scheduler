@@ -1,0 +1,31 @@
+{
+  "name": "@kairo/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to=.wrangler/state",
+    "deploy": "wrangler deploy",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply kairo_db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply kairo_db --remote",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@kairo/shared": "workspace:*",
+    "@noble/hashes": "^1.6.1",
+    "drizzle-orm": "^0.36.4",
+    "hono": "^4.6.13",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "drizzle-kit": "^0.30.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.95.0"
+  }
+}

@@ -1,0 +1,53 @@
+# deps
+node_modules
+.pnpm-store
+
+# build
+dist
+build
+out
+.next
+.turbo
+.cache
+.parcel-cache
+
+# env & secrets (never commit)
+.env
+.env.*
+!.env.example
+.dev.vars
+.wrangler
+wrangler.jsonc.local
+
+# cloudflare / tauri / expo
+.vercel
+target
+src-tauri/target
+.expo
+android/app/build
+android/build
+android/.gradle
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# test
+coverage
+*.lcov
+
+# sqlite (dev D1)
+*.sqlite
+*.sqlite-journal
+*.db

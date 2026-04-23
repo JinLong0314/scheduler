@@ -1,38 +1,44 @@
-# M0MoNa's scheduler
+# Kairo
 
-&gt; 由于我每次碰到多任务堆在一起的时候往往无从下手，于是我写了一个日程软件用来把多个任务全部分离开以便一个个处理。（除了这一句，其他readme都是AI写的）
+> 跨平台 · Serverless · 多用户的日程与任务管理系统
 
-一个轻量级的本地日程管理工具，采用暖色日系极简风格，帮助你把繁杂的任务逐一拆解、长期追踪，直到全部完成。
+继承原 M0MoNa's scheduler 的"任务分离、逐个击破"思路，重构为 Web / Desktop (Tauri) / Android (Expo + 原生 Widget) 全平台覆盖，后端全跑在 Cloudflare Workers + D1 + R2。
 
----
+## 文档
 
-## 功能特点
+- [项目介绍](./docs/项目介绍.md)
+- [重构目标](./docs/重构目标.md)
+- [代码规范](./docs/代码规范.md)
+- [安全策略](./SECURITY.md)
 
-- **任务分离，逐个击破** —— 将多任务平铺展示，避免堆叠焦虑，专注于当前能做的事
-- **无时间压力** —— 日程不绑定具体时间点，只看「是否完成」
-- **自动顺延** —— 今日未完成的任务会保留至第二天，依次类推，直到你标记完成
-- **本地持久化** —— 所有数据自动保存在同目录的 `schedule_data.json` 中，无需联网，隐私安全
-- **暖色日系 UI** —— 亚麻暖白底色 + 珊瑚橙圆角边框，温和不刺眼
-- **单文件可运行** —— 纯 Python 标准库 + tkinter，无需安装额外依赖
+## 快速开始
 
----
-
-## 下载与使用
-
-### 方式一：直接下载 EXE（推荐）
-
-1. 进入本仓库的 [Releases](../../releases) 页面
-2. 下载最新版本的 `M0MoNa's scheduler.zip`
-3. 解压到任意文件夹
-4. 双击运行 `日程.exe`
-
-&gt; 首次运行后会在同目录生成 `schedule_data.json`，这是你的本地日程数据库，请妥善保管。
-
-### 方式二：运行源码
-
-1. 确保已安装 Python 3.8+
-2. 克隆或下载本仓库源码
-3. 在终端进入项目目录，执行：
+前置要求：Node.js ≥ 20、pnpm ≥ 9
 
 ```bash
-python schedule.py
+pnpm install
+pnpm dev        # 同时启动 worker + web
+```
+
+## Monorepo 结构
+
+```
+apps/
+  worker/    # Cloudflare Worker API (Hono + D1 + Drizzle)
+  web/       # Web / PWA (Vite + React)
+  desktop/   # 桌面端 (Tauri)
+  mobile/    # 移动端 (Expo + 原生 Android Widget)
+packages/
+  shared/    # 跨端类型与 Zod schema
+  themes/    # 主题 token（4 套预置主题）
+  ui/        # 跨端共享组件
+tools/
+  cli/       # 部署 / 更新 CLI (npx kairo ...)
+```
+
+## 部署
+
+```bash
+npx kairo init     # 首次部署到 Cloudflare（引导式）
+npx kairo deploy   # 增量更新
+```

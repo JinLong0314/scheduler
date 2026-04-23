@@ -1,0 +1,22 @@
+# Gitleaks config for Kairo
+title = "Kairo secret scan"
+
+[allowlist]
+description = "Ignore lockfiles and dist artifacts"
+paths = [
+  '''pnpm-lock\.yaml''',
+  '''dist/''',
+  '''\.wrangler/''',
+]
+
+[[rules]]
+description = "Cloudflare API Token"
+id = "cloudflare-token"
+regex = '''(?i)(cloudflare|cf)[_-]?(api)?[_-]?token[\"'\s:=]+([a-zA-Z0-9_-]{30,})'''
+tags = ["cloudflare", "key"]
+
+[[rules]]
+description = "Generic .env assignment"
+id = "env-generic"
+regex = '''(?i)(api|secret|password|token|key)[_-]?key?\s*=\s*["'][^"']{16,}["']'''
+tags = ["secret"]

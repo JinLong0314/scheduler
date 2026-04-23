@@ -1,0 +1,318 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens: concatenated from @kairo/themes at build time could replace this.
+   Until then, declare all 4 themes × 2 modes by hand here.
+   (Alternative: call themesToCss() once and inject as <style>.) */
+
+/* warm-japandi */
+[data-theme='warm-japandi'][data-mode='light'] {
+  --color-bg: #faf3e8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5ebda;
+  --color-fg: #5d4037;
+  --color-fg-muted: #a1887f;
+  --color-border: #e0d5c5;
+  --color-border-strong: #d4a373;
+  --color-accent: #e8956a;
+  --color-accent-hover: #d4845a;
+  --color-accent-fg: #ffffff;
+  --color-success: #7fb069;
+  --color-warning: #e8a745;
+  --color-danger: #e07a5f;
+  --color-info: #8aa8b8;
+  --color-event-1: #e8956a;
+  --color-event-2: #d4a373;
+  --color-event-3: #8aa8b8;
+  --color-event-4: #a8b89f;
+  --color-event-5: #c9ada7;
+  --color-ring: #e8956a;
+  --color-selected: #ffe8d6;
+  --color-weekend: #ffb7b2;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 1px 2px rgba(93, 64, 55, 0.06);
+  --shadow-md: 0 4px 12px rgba(93, 64, 55, 0.08);
+  --shadow-lg: 0 12px 32px rgba(93, 64, 55, 0.12);
+  --font-sans:
+    'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+[data-theme='warm-japandi'][data-mode='dark'] {
+  --color-bg: #1e1612;
+  --color-surface: #2a1f19;
+  --color-surface-muted: #241a15;
+  --color-fg: #f2e6d8;
+  --color-fg-muted: #bfa893;
+  --color-border: #3d2d24;
+  --color-border-strong: #5a4232;
+  --color-accent: #f4a775;
+  --color-accent-hover: #ffba8a;
+  --color-accent-fg: #1e1612;
+  --color-success: #9bc88a;
+  --color-warning: #ebb968;
+  --color-danger: #eb9a84;
+  --color-info: #a3beca;
+  --color-event-1: #f4a775;
+  --color-event-2: #d4a373;
+  --color-event-3: #a3beca;
+  --color-event-4: #b8c9b0;
+  --color-event-5: #d4bdb7;
+  --color-ring: #f4a775;
+  --color-selected: #3d2d24;
+  --color-weekend: #4a2e28;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --font-sans:
+    'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+/* morning-mist */
+[data-theme='morning-mist'][data-mode='light'] {
+  --color-bg: #f5fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e6f0f7;
+  --color-fg: #35516b;
+  --color-fg-muted: #93aec3;
+  --color-border: #cbd9e3;
+  --color-border-strong: #93aec3;
+  --color-accent: #7a9bc0;
+  --color-accent-hover: #5e83ab;
+  --color-accent-fg: #ffffff;
+  --color-success: #b8d0c0;
+  --color-warning: #e8c987;
+  --color-danger: #d89797;
+  --color-info: #a7b8e8;
+  --color-event-1: #7a9bc0;
+  --color-event-2: #d89797;
+  --color-event-3: #a7b8e8;
+  --color-event-4: #b8d0c0;
+  --color-event-5: #c89bb8;
+  --color-ring: #7a9bc0;
+  --color-selected: #d2e1ec;
+  --color-weekend: #e9b9b9;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 1px 3px rgba(53, 81, 107, 0.06);
+  --shadow-md: 0 6px 18px rgba(53, 81, 107, 0.08);
+  --shadow-lg: 0 16px 40px rgba(53, 81, 107, 0.12);
+  --font-sans:
+    'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+[data-theme='morning-mist'][data-mode='dark'] {
+  --color-bg: #0f1a26;
+  --color-surface: #172535;
+  --color-surface-muted: #1e2e42;
+  --color-fg: #e6eef6;
+  --color-fg-muted: #8da3bc;
+  --color-border: #2a3e55;
+  --color-border-strong: #456780;
+  --color-accent: #9bb8d4;
+  --color-accent-hover: #b3cce3;
+  --color-accent-fg: #0f1a26;
+  --color-success: #a7c7b2;
+  --color-warning: #e8c987;
+  --color-danger: #e8b4b4;
+  --color-info: #b8c5e8;
+  --color-event-1: #9bb8d4;
+  --color-event-2: #e8b4b4;
+  --color-event-3: #b8c5e8;
+  --color-event-4: #a7c7b2;
+  --color-event-5: #d9b4cc;
+  --color-ring: #9bb8d4;
+  --color-selected: #2a3e55;
+  --color-weekend: #3a2a34;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --font-sans:
+    'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+/* deep-night */
+[data-theme='deep-night'][data-mode='light'] {
+  --color-bg: #12121a;
+  --color-surface: #1c1c28;
+  --color-surface-muted: #2a2a3a;
+  --color-fg: #ededf5;
+  --color-fg-muted: #9b9bb8;
+  --color-border: #32324a;
+  --color-border-strong: #45456b;
+  --color-accent: #6ee7f9;
+  --color-accent-hover: #3dd4ec;
+  --color-accent-fg: #000000;
+  --color-success: #a3e635;
+  --color-warning: #fbbf24;
+  --color-danger: #fb7185;
+  --color-info: #6ee7f9;
+  --color-event-1: #6ee7f9;
+  --color-event-2: #f472b6;
+  --color-event-3: #a3e635;
+  --color-event-4: #fbbf24;
+  --color-event-5: #c084fc;
+  --color-ring: #6ee7f9;
+  --color-selected: #2a2a3a;
+  --color-weekend: #2a1822;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7);
+  --font-sans:
+    'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+[data-theme='deep-night'][data-mode='dark'] {
+  --color-bg: #000000;
+  --color-surface: #0a0a0f;
+  --color-surface-muted: #12121a;
+  --color-fg: #ededf5;
+  --color-fg-muted: #9b9bb8;
+  --color-border: #32324a;
+  --color-border-strong: #45456b;
+  --color-accent: #6ee7f9;
+  --color-accent-hover: #3dd4ec;
+  --color-accent-fg: #000000;
+  --color-success: #a3e635;
+  --color-warning: #fbbf24;
+  --color-danger: #fb7185;
+  --color-info: #6ee7f9;
+  --color-event-1: #6ee7f9;
+  --color-event-2: #f472b6;
+  --color-event-3: #a3e635;
+  --color-event-4: #fbbf24;
+  --color-event-5: #c084fc;
+  --color-ring: #6ee7f9;
+  --color-selected: #1c1c28;
+  --color-weekend: #1a0e14;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.9);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 1);
+  --font-sans:
+    'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans SC', system-ui, sans-serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+/* paper-book */
+[data-theme='paper-book'][data-mode='light'] {
+  --color-bg: #fbf8f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f3eee2;
+  --color-fg: #1a1a1a;
+  --color-fg-muted: #6b6b6b;
+  --color-border: #d9d3c4;
+  --color-border-strong: #b8ae97;
+  --color-accent: #c8432c;
+  --color-accent-hover: #a3321f;
+  --color-accent-fg: #ffffff;
+  --color-success: #6a7f4c;
+  --color-warning: #c89b3c;
+  --color-danger: #c8432c;
+  --color-info: #32407b;
+  --color-event-1: #c8432c;
+  --color-event-2: #32407b;
+  --color-event-3: #c89b3c;
+  --color-event-4: #6a7f4c;
+  --color-event-5: #7b5e8c;
+  --color-ring: #c8432c;
+  --color-selected: #f0e8d4;
+  --color-weekend: #eadfc8;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --shadow-sm: 0 1px 0 rgba(26, 26, 26, 0.06);
+  --shadow-md: 0 2px 8px rgba(26, 26, 26, 0.08);
+  --shadow-lg: 0 8px 24px rgba(26, 26, 26, 0.12);
+  --font-sans: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+[data-theme='paper-book'][data-mode='dark'] {
+  --color-bg: #1c1915;
+  --color-surface: #27241e;
+  --color-surface-muted: #221f19;
+  --color-fg: #efe8d9;
+  --color-fg-muted: #a89f8a;
+  --color-border: #38342b;
+  --color-border-strong: #5a5243;
+  --color-accent: #e8674d;
+  --color-accent-hover: #f07a63;
+  --color-accent-fg: #1c1915;
+  --color-success: #a7b884;
+  --color-warning: #e0b661;
+  --color-danger: #e8674d;
+  --color-info: #7a89c8;
+  --color-event-1: #e8674d;
+  --color-event-2: #7a89c8;
+  --color-event-3: #e0b661;
+  --color-event-4: #a7b884;
+  --color-event-5: #b090c3;
+  --color-ring: #e8674d;
+  --color-selected: #38342b;
+  --color-weekend: #2e2721;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --font-sans: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-serif: 'Source Serif Pro', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+/* Global base */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+::selection {
+  background: var(--color-selected);
+  color: var(--color-fg);
+}

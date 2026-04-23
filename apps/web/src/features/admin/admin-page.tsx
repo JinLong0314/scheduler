@@ -13,14 +13,35 @@ interface AdminConfig {
   countryBlocklist: string[];
 }
 
+interface InviteResult {
+  token: string;
+  expiresAt: string;
+}
+
 export function AdminPage() {
   const [cfg, setCfg] = useState<AdminConfig | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [invite, setInvite] = useState<InviteResult | null>(null);
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
-    api<AdminConfig>('/admin/config').then(setCfg).catch(() => setCfg(null));
+    api<AdminConfig>('/admin/config')
+      .then(setCfg)
+      .catch(() => setCfg(null));
   }, []);
+
+  async function generateInvite() {
+    setInviting(true);
+    try {
+      const res = await api<InviteResult>('/admin/invite', { method: 'POST' });
+      setInvite(res);
+    } catch {
+      setInvite(null);
+    } finally {
+      setInviting(false);
+    }
+  }
 
   async function save() {
     if (!cfg) return;
@@ -37,14 +58,14 @@ export function AdminPage() {
     }
   }
 
-  if (!cfg) return <div className="p-8 text-fg-muted">加载中…</div>;
+  if (!cfg) return <div className="text-fg-muted p-8">加载中…</div>;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <Card>
         <CardHeader>
           <h1 className="text-lg font-semibold">管理面板</h1>
-          <p className="text-xs text-fg-muted">仅管理员可见</p>
+          <p className="text-fg-muted text-xs">仅管理员可见</p>
         </CardHeader>
       </Card>
 
@@ -81,7 +102,13 @@ export function AdminPage() {
             <Input
               value={cfg.ipAllowlist.join(',')}
               onChange={(e) =>
-                setCfg({ ...cfg, ipAllowlist: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
+                setCfg({
+                  ...cfg,
+                  ipAllowlist: e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
               }
             />
           </div>
@@ -90,7 +117,13 @@ export function AdminPage() {
             <Input
               value={cfg.ipBlocklist.join(',')}
               onChange={(e) =>
-                setCfg({ ...cfg, ipBlocklist: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
+                setCfg({
+                  ...cfg,
+                  ipBlocklist: e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
               }
             />
           </div>
@@ -101,7 +134,10 @@ export function AdminPage() {
               onChange={(e) =>
                 setCfg({
                   ...cfg,
-                  countryAllowlist: e.target.value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean),
+                  countryAllowlist: e.target.value
+                    .split(',')
+                    .map((s) => s.trim().toUpperCase())
+                    .filter(Boolean),
                 })
               }
             />
@@ -113,7 +149,10 @@ export function AdminPage() {
               onChange={(e) =>
                 setCfg({
                   ...cfg,
-                  countryBlocklist: e.target.value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean),
+                  countryBlocklist: e.target.value
+                    .split(',')
+                    .map((s) => s.trim().toUpperCase())
+                    .filter(Boolean),
                 })
               }
             />
@@ -131,7 +170,7 @@ export function AdminPage() {
             onChange={(e) =>
               setCfg({ ...cfg, mapProvider: e.target.value as AdminConfig['mapProvider'] })
             }
-            className="rounded-md border border-border bg-surface px-3 py-2 text-sm"
+            className="border-border bg-surface rounded-md border px-3 py-2 text-sm"
           >
             <option value="osm">OpenStreetMap（免费）</option>
             <option value="amap">高德</option>
@@ -140,11 +179,52 @@ export function AdminPage() {
         </CardBody>
       </Card>
 
+      {/* Invite token section */}
+      <Card>
+        <CardHeader>
+          <h2 className="text-sm font-semibold">邀请注册</h2>
+          <p className="text-fg-muted text-xs">
+            公开注册关闭时，可生成一次性邀请链接（7 天有效）发送给受邀用户。
+          </p>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          <Button onClick={generateInvite} disabled={inviting} variant="secondary">
+            {inviting ? '生成中…' : '生成邀请链接'}
+          </Button>
+          {invite && (
+            <div className="border-border bg-surface-muted space-y-1 rounded-lg border p-3">
+              <p className="text-fg-muted text-xs">
+                有效至：{new Date(invite.expiresAt).toLocaleString()}
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={`${window.location.origin}/register?invite=${invite.token}`}
+                  className="border-border bg-surface flex-1 rounded border px-3 py-1.5 font-mono text-xs outline-none"
+                  onFocus={(e) => e.target.select()}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/register?invite=${invite.token}`,
+                    )
+                  }
+                >
+                  复制
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
       <div className="flex items-center gap-2">
         <Button onClick={save} disabled={saving}>
           {saving ? '保存中…' : '保存'}
         </Button>
-        {message && <span className="text-sm text-fg-muted">{message}</span>}
+        {message && <span className="text-fg-muted text-sm">{message}</span>}
       </div>
     </div>
   );

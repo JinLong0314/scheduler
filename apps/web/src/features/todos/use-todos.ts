@@ -26,6 +26,20 @@ export function useTodos(date: string) {
   });
 }
 
+/** Fetch todos across a date range (for calendar views). */
+export function useTodosRange(fromIso: string, toIso: string) {
+  const from = fromIso.slice(0, 10);
+  const to = toIso.slice(0, 10);
+  return useQuery({
+    queryKey: ['todos', 'range', from, to],
+    queryFn: () =>
+      api<{ items: TodoItem[] }>(
+        `/todos?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      ),
+    staleTime: 15_000,
+  });
+}
+
 export type TreeNode = TodoItem & { children: TreeNode[] };
 
 /** Build a tree of TodoItem from a flat list returned by the API */

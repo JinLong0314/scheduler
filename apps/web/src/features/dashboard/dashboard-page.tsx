@@ -5,6 +5,7 @@ import { api } from '../../shared/lib/api-client';
 import { useAuthStore } from '../../shared/lib/auth-store';
 import { MonthView } from '../calendar/month-view';
 import { WeekView } from '../calendar/week-view';
+import { QuickCreateDialog } from '../create/quick-create-dialog';
 import { TodoList } from '../todos/todo-list';
 
 type CalendarMode = 'month' | 'week';
@@ -31,6 +32,9 @@ export function DashboardPage() {
   const [date, setDate] = useState<string>(todayIso());
   const [mode, setMode] = useState<CalendarMode>('month');
   const [monthAnchor, setMonthAnchor] = useState<Date>(() => new Date());
+  const [quickCreate, setQuickCreate] = useState<{ date?: string; tab?: 'todo' | 'event' } | null>(
+    null,
+  );
 
   const logout = async () => {
     try {
@@ -177,6 +181,7 @@ export function DashboardPage() {
                 anchor={monthAnchor}
                 selectedIso={date}
                 onDayClick={(iso) => setDate(iso)}
+                onCreateClick={(iso) => setQuickCreate({ date: iso })}
               />
             ) : (
               <div className="h-[640px]">
@@ -186,6 +191,24 @@ export function DashboardPage() {
           </CardBody>
         </Card>
       </main>
+      {/* FAB */}
+      <button
+        type="button"
+        onClick={() => setQuickCreate({ date: date })}
+        className="bg-accent text-accent-fg fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition hover:brightness-110 active:scale-95"
+        aria-label="新建事项"
+      >
+        <span className="text-2xl font-light leading-none">+</span>
+      </button>
+
+      {/* Quick create dialog */}
+      {quickCreate !== null && (
+        <QuickCreateDialog
+          defaultDate={quickCreate.date}
+          defaultTab={quickCreate.tab}
+          onClose={() => setQuickCreate(null)}
+        />
+      )}
     </div>
   );
 }

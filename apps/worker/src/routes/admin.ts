@@ -34,7 +34,8 @@ adminRoutes.patch('/config', async (c) => {
   if (ctx instanceof Response) return ctx;
   const body = await c.req.json().catch(() => null);
   const parsed = adminConfigUpdateSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: 'INVALID_INPUT', details: parsed.error.flatten() }, 400);
+  if (!parsed.success)
+    return c.json({ error: 'INVALID_INPUT', details: parsed.error.flatten() }, 400);
 
   const db = drizzle(c.env.DB);
   const row = await db.select().from(adminConfig).where(eq(adminConfig.id, 'singleton')).get();
@@ -58,4 +59,27 @@ adminRoutes.patch('/config', async (c) => {
   await c.env.KV.put('admin:config', JSON.stringify(next));
 
   return c.json(next);
+});
+
+// Generate a single-use invite token (valid 7 days).
+adminRoutes.post('/invite', async (c) => {
+  const ctx = requireAdmin(c);
+  if (ctx instanceof Response) return ctx;
+
+  const tokenBytes = new Uint8Array(16);
+  crypto.getRandomValues(tokenBytes);
+  const token = Array.from(tokenBytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  await c.env.KV.put(
+    `invite:${token}`,
+    JSON.stringify({ createdAt: now.toISOString(), expiresAt }),
+    { expirationTtl: 7 * 24 * 60 * 60 },
+  );
+
+  return c.json({ token, expiresAt });
 });

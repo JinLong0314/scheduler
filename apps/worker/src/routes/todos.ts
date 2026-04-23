@@ -1,5 +1,5 @@
 import { newId, todoCreateSchema, todoUpdateSchema } from '@kairo/shared';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lt, lte } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import type { Env, Variables } from '../env.js';
@@ -13,20 +13,90 @@ todoRoutes.get('/', async (c) => {
   if (ctx instanceof Response) return ctx;
   const db = drizzle(c.env.DB);
   const date = c.req.query('date');
-  // Return all todos for the day across all nesting levels; client builds tree.
-  const rows = date
-    ? await db
-        .select()
+  const from = c.req.query('from');
+  const to = c.req.query('to');
+  const now = new Date().toISOString();
+
+  // Inline rollover: when the client queries today's todos, roll over past-due rollover todos.
+  // This ensures rollover works even without a scheduled cron in local dev.
+  if (date) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (date === today) {
+      // 1) Roll over root todos (rollover=true, uncompleted, past-dated)
+      await db
+        .update(todos)
+        .set({ scheduledDate: today, updatedAt: now })
+        .where(
+          and(
+            eq(todos.userId, ctx.userId),
+            eq(todos.completed, false),
+            eq(todos.rollover, true),
+            lt(todos.scheduledDate, today),
+            isNull(todos.parentId),
+          ),
+        );
+
+      // 2) Cascade to children of any root todo now scheduled for today
+      const rootsToday = await db
+        .select({ id: todos.id })
         .from(todos)
-        .where(and(eq(todos.userId, ctx.userId), eq(todos.scheduledDate, date)))
-        .orderBy(asc(todos.orderIndex), asc(todos.createdAt))
-        .all()
-    : await db
-        .select()
-        .from(todos)
-        .where(eq(todos.userId, ctx.userId))
-        .orderBy(desc(todos.createdAt))
+        .where(
+          and(
+            eq(todos.userId, ctx.userId),
+            eq(todos.scheduledDate, today),
+            isNull(todos.parentId),
+            eq(todos.completed, false),
+          ),
+        )
         .all();
+
+      for (const parent of rootsToday) {
+        await db
+          .update(todos)
+          .set({ scheduledDate: today, updatedAt: now })
+          .where(
+            and(
+              eq(todos.userId, ctx.userId),
+              eq(todos.completed, false),
+              lt(todos.scheduledDate, today),
+              eq(todos.parentId, parent.id),
+            ),
+          );
+      }
+    }
+  }
+
+  // Return all todos for the day across all nesting levels; client builds tree.
+  let rows;
+  if (date) {
+    rows = await db
+      .select()
+      .from(todos)
+      .where(and(eq(todos.userId, ctx.userId), eq(todos.scheduledDate, date)))
+      .orderBy(asc(todos.orderIndex), asc(todos.createdAt))
+      .all();
+  } else if (from && to) {
+    // Range query for calendar views
+    rows = await db
+      .select()
+      .from(todos)
+      .where(
+        and(
+          eq(todos.userId, ctx.userId),
+          gte(todos.scheduledDate, from.slice(0, 10)),
+          lte(todos.scheduledDate, to.slice(0, 10)),
+        ),
+      )
+      .orderBy(asc(todos.scheduledDate), asc(todos.orderIndex), asc(todos.createdAt))
+      .all();
+  } else {
+    rows = await db
+      .select()
+      .from(todos)
+      .where(eq(todos.userId, ctx.userId))
+      .orderBy(desc(todos.createdAt))
+      .all();
+  }
   return c.json({ items: rows });
 });
 

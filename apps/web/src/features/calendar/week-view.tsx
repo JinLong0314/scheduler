@@ -1,7 +1,10 @@
 import { cn } from '@kairo/ui';
 import { useMemo, useState } from 'react';
-import { EventCreateDialog } from '../events/event-create-dialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, ApiError } from '../../shared/lib/api-client';
+import { QuickCreateDialog } from '../create/quick-create-dialog';
 import { useEvents, type EventItem } from '../events/use-events';
+import { useTodosRange, type TodoItem } from '../todos/use-todos';
 
 const HOUR_PX = 48;
 const START_HOUR = 0;
@@ -52,12 +55,33 @@ function fmtRangeLabel(weekStart: Date): string {
 export function WeekView() {
   const [anchor, setAnchor] = useState(() => new Date());
   const weekStart = useMemo(() => mondayOf(anchor), [anchor]);
-  const [creating, setCreating] = useState<string | undefined>(undefined); // ISO hint for new event
+  // null = closed; '' or ISO = open
+  const [creating, setCreating] = useState<string | null>(null);
 
   const from = weekStart.toISOString();
   const to = addDays(weekStart, 7).toISOString();
-  const { data } = useEvents(from, to);
-  const events = data?.items ?? [];
+  const { data: eventsData } = useEvents(from, to);
+  const events = eventsData?.items ?? [];
+
+  const { data: todosData } = useTodosRange(from, to);
+  const allTodos = todosData?.items ?? [];
+
+  const qc = useQueryClient();
+  const toggleTodo = useMutation({
+    mutationFn: (t: TodoItem) =>
+      api<TodoItem>(`/todos/${t.id}`, {
+        method: 'PATCH',
+        json: { completed: !t.completed, version: t.version },
+      }),
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === 'CHILDREN_INCOMPLETE') {
+        alert('请先完成所有子任务。');
+      }
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['todos'] });
+    },
+  });
 
   return (
     <>
@@ -71,7 +95,7 @@ export function WeekView() {
             <NavButton onClick={() => setAnchor((a) => addDays(a, -7))} label="上一周" />
             <NavButton onClick={() => setAnchor(new Date())} label="本周" />
             <NavButton onClick={() => setAnchor((a) => addDays(a, 7))} label="下一周" />
-            <NavButton onClick={() => setCreating(undefined)} label="+ 新建事件" />
+            <NavButton onClick={() => setCreating('')} label="+ 新建" highlight />
           </div>
         </div>
 
@@ -80,31 +104,57 @@ export function WeekView() {
             className="grid min-w-[720px]"
             style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}
           >
-            {/* header row */}
+            {/* header row + todos shelf */}
             <div className="border-border bg-surface sticky top-0 z-10 border-b" />
             {Array.from({ length: 7 }, (_, i) => {
               const d = addDays(weekStart, i);
               const isToday = isoDate(d) === isoDate(new Date());
               const isWeekend = i >= 5;
+              const dayIso = isoDate(d);
+              const dayTodos = allTodos.filter((t) => t.scheduledDate === dayIso && !t.parentId);
               return (
                 <div
                   key={i}
                   className={cn(
-                    'border-border bg-surface sticky top-0 z-10 border-b border-l px-2 py-2 text-center',
-                    isWeekend && 'bg-[color:var(--color-weekend)]/30',
+                    'border-border bg-surface sticky top-0 z-10 border-b border-l px-1.5 py-1.5',
+                    isWeekend && 'bg-[color:var(--color-weekend)]/20',
                   )}
                 >
-                  <div className="text-fg-muted text-[11px]">
-                    {['一', '二', '三', '四', '五', '六', '日'][i]}
+                  {/* Day name + date */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-fg-muted text-[10px]">
+                      {['一', '二', '三', '四', '五', '六', '日'][i]}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCreating(d.toISOString())}
+                      className="text-fg-muted hover:bg-surface-muted hover:text-fg rounded px-1 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100"
+                      title={`在 ${dayIso} 新建`}
+                    >
+                      +
+                    </button>
                   </div>
                   <div
                     className={cn(
-                      'mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm',
+                      'inline-flex h-7 w-7 items-center justify-center rounded-full text-sm',
                       isToday && 'bg-accent text-accent-fg font-semibold',
                     )}
                   >
                     {d.getDate()}
                   </div>
+                  {/* Compact todos for this day */}
+                  {dayTodos.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                      {dayTodos.slice(0, 2).map((t) => (
+                        <TodoChip key={t.id} todo={t} onToggle={(tt) => toggleTodo.mutate(tt)} />
+                      ))}
+                      {dayTodos.length > 2 && (
+                        <span className="text-fg-muted block text-[10px]">
+                          +{dayTodos.length - 2} 项
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -154,10 +204,11 @@ export function WeekView() {
         </div>
       </div>
 
-      {creating !== undefined && (
-        <EventCreateDialog
+      {creating !== null && (
+        <QuickCreateDialog
+          defaultTab="event"
           {...(creating ? { defaultStart: creating } : {})}
-          onClose={() => setCreating(undefined)}
+          onClose={() => setCreating(null)}
         />
       )}
     </>
@@ -185,14 +236,51 @@ function EventBlock({ e, dayStartMs }: { e: EventItem; dayStartMs: number }) {
   );
 }
 
-function NavButton({ onClick, label }: { onClick: () => void; label: string }) {
+function NavButton({
+  onClick,
+  label,
+  highlight,
+}: {
+  onClick: () => void;
+  label: string;
+  highlight?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="border-border bg-surface text-fg hover:bg-surface-muted rounded-md border px-3 py-1 text-xs transition"
+      className={cn(
+        'rounded-md border px-3 py-1 text-xs transition',
+        highlight
+          ? 'border-accent bg-accent text-accent-fg hover:opacity-90'
+          : 'border-border bg-surface text-fg hover:bg-surface-muted',
+      )}
     >
       {label}
+    </button>
+  );
+}
+
+function TodoChip({ todo, onToggle }: { todo: TodoItem; onToggle: (t: TodoItem) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(todo)}
+      className={cn(
+        'hover:bg-surface-muted flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-[10px] transition',
+      )}
+    >
+      <span
+        className={cn(
+          'flex h-3 w-3 shrink-0 items-center justify-center rounded-full border',
+          todo.completed ? 'border-success bg-success text-white' : 'border-border-strong',
+        )}
+      >
+        {todo.completed && '✓'}
+      </span>
+      <span className={cn('truncate', todo.completed && 'text-fg-muted line-through')}>
+        {todo.title}
+      </span>
     </button>
   );
 }

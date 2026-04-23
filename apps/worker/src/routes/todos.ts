@@ -1,9 +1,9 @@
 import { newId, todoCreateSchema, todoUpdateSchema } from '@kairo/shared';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import type { Env, Variables } from '../env.js';
-import { todos } from '../db/schema.js';
+import { events, todos } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 
 export const todoRoutes = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -13,12 +13,13 @@ todoRoutes.get('/', async (c) => {
   if (ctx instanceof Response) return ctx;
   const db = drizzle(c.env.DB);
   const date = c.req.query('date');
+  // Return all todos for the day across all nesting levels; client builds tree.
   const rows = date
     ? await db
         .select()
         .from(todos)
         .where(and(eq(todos.userId, ctx.userId), eq(todos.scheduledDate, date)))
-        .orderBy(desc(todos.createdAt))
+        .orderBy(asc(todos.orderIndex), asc(todos.createdAt))
         .all()
     : await db
         .select()
@@ -34,7 +35,8 @@ todoRoutes.post('/', async (c) => {
   if (ctx instanceof Response) return ctx;
   const body = await c.req.json().catch(() => null);
   const parsed = todoCreateSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: 'INVALID_INPUT', details: parsed.error.flatten() }, 400);
+  if (!parsed.success)
+    return c.json({ error: 'INVALID_INPUT', details: parsed.error.flatten() }, 400);
 
   const db = drizzle(c.env.DB);
   const id = newId();
@@ -74,7 +76,7 @@ todoRoutes.patch('/:id', async (c) => {
     return c.json({ error: 'CONFLICT', remote: existing }, 409);
   }
 
-  // If marking complete, ensure all children are complete (requirement from user).
+  // If marking complete, ensure all direct children are complete.
   if (parsed.data.completed === true) {
     const children = await db
       .select({ id: todos.id, completed: todos.completed })
@@ -87,6 +89,7 @@ todoRoutes.patch('/:id', async (c) => {
   }
 
   const now = new Date().toISOString();
+  const nextCompleted = parsed.data.completed ?? existing.completed;
   await db
     .update(todos)
     .set({
@@ -96,7 +99,7 @@ todoRoutes.patch('/:id', async (c) => {
       rollover: parsed.data.rollover ?? existing.rollover,
       linkedEventId: parsed.data.linkedEventId ?? existing.linkedEventId,
       scheduledDate: parsed.data.scheduledDate ?? existing.scheduledDate,
-      completed: parsed.data.completed ?? existing.completed,
+      completed: nextCompleted,
       completedAt:
         parsed.data.completed === true
           ? now
@@ -107,8 +110,23 @@ todoRoutes.patch('/:id', async (c) => {
       updatedAt: now,
     })
     .where(eq(todos.id, id));
+
+  // Cascade: if parent todo is now uncompleted but had a completed parent, that's fine.
+  // If we just completed a child, check whether all siblings are done and auto-suggest
+  // parent completion (we surface this via the returned row; client decides).
+
   const row = await db.select().from(todos).where(eq(todos.id, id)).get();
-  return c.json(row);
+  // Compute whether parent is now completable (all siblings completed too).
+  let parentCompletable = false;
+  if (row?.parentId && nextCompleted) {
+    const siblings = await db
+      .select({ completed: todos.completed })
+      .from(todos)
+      .where(eq(todos.parentId, row.parentId))
+      .all();
+    parentCompletable = siblings.every((s) => s.completed);
+  }
+  return c.json({ ...row, parentCompletable });
 });
 
 todoRoutes.delete('/:id', async (c) => {
@@ -118,6 +136,16 @@ todoRoutes.delete('/:id', async (c) => {
   const db = drizzle(c.env.DB);
   const existing = await db.select().from(todos).where(eq(todos.id, id)).get();
   if (!existing || existing.userId !== ctx.userId) return c.json({ error: 'NOT_FOUND' }, 404);
+  // Delete cascades to children via FK if DB supports it,
+  // but SQLite doesn't enforce FK by default — delete children manually.
+  await db.delete(todos).where(eq(todos.parentId, id));
   await db.delete(todos).where(eq(todos.id, id));
+  // If this todo was linked to an event, unlink it (don't delete the event).
+  if (existing.linkedEventId) {
+    await db
+      .update(events)
+      .set({ linkedTodoId: null, updatedAt: new Date().toISOString() })
+      .where(eq(events.id, existing.linkedEventId));
+  }
   return c.json({ ok: true });
 });

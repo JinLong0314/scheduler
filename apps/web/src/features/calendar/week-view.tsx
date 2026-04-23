@@ -1,5 +1,6 @@
 import { cn } from '@kairo/ui';
 import { useMemo, useState } from 'react';
+import { EventCreateDialog } from '../events/event-create-dialog';
 import { useEvents, type EventItem } from '../events/use-events';
 
 const HOUR_PX = 48;
@@ -51,6 +52,7 @@ function fmtRangeLabel(weekStart: Date): string {
 export function WeekView() {
   const [anchor, setAnchor] = useState(() => new Date());
   const weekStart = useMemo(() => mondayOf(anchor), [anchor]);
+  const [creating, setCreating] = useState<string | undefined>(undefined); // ISO hint for new event
 
   const from = weekStart.toISOString();
   const to = addDays(weekStart, 7).toISOString();
@@ -58,94 +60,107 @@ export function WeekView() {
   const events = data?.items ?? [];
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold">周视图</h2>
-          <p className="text-xs text-fg-muted">{fmtRangeLabel(weekStart)}</p>
+    <>
+      <div className="border-border bg-surface flex h-full flex-col rounded-lg border shadow-sm">
+        <div className="border-border flex items-center justify-between border-b px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold">周视图</h2>
+            <p className="text-fg-muted text-xs">{fmtRangeLabel(weekStart)}</p>
+          </div>
+          <div className="flex gap-1">
+            <NavButton onClick={() => setAnchor((a) => addDays(a, -7))} label="上一周" />
+            <NavButton onClick={() => setAnchor(new Date())} label="本周" />
+            <NavButton onClick={() => setAnchor((a) => addDays(a, 7))} label="下一周" />
+            <NavButton onClick={() => setCreating(undefined)} label="+ 新建事件" />
+          </div>
         </div>
-        <div className="flex gap-1">
-          <NavButton onClick={() => setAnchor((a) => addDays(a, -7))} label="上一周" />
-          <NavButton onClick={() => setAnchor(new Date())} label="本周" />
-          <NavButton onClick={() => setAnchor((a) => addDays(a, 7))} label="下一周" />
-        </div>
-      </div>
 
-      <div className="relative flex-1 overflow-auto">
-        <div className="grid min-w-[720px]" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-          {/* header row */}
-          <div className="sticky top-0 z-10 border-b border-border bg-surface" />
-          {Array.from({ length: 7 }, (_, i) => {
-            const d = addDays(weekStart, i);
-            const isToday = isoDate(d) === isoDate(new Date());
-            const isWeekend = i >= 5;
-            return (
-              <div
-                key={i}
-                className={cn(
-                  'sticky top-0 z-10 border-b border-l border-border bg-surface px-2 py-2 text-center',
-                  isWeekend && 'bg-[color:var(--color-weekend)]/30',
-                )}
-              >
-                <div className="text-[11px] text-fg-muted">
-                  {['一', '二', '三', '四', '五', '六', '日'][i]}
-                </div>
+        <div className="relative flex-1 overflow-auto">
+          <div
+            className="grid min-w-[720px]"
+            style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}
+          >
+            {/* header row */}
+            <div className="border-border bg-surface sticky top-0 z-10 border-b" />
+            {Array.from({ length: 7 }, (_, i) => {
+              const d = addDays(weekStart, i);
+              const isToday = isoDate(d) === isoDate(new Date());
+              const isWeekend = i >= 5;
+              return (
                 <div
+                  key={i}
                   className={cn(
-                    'mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm',
-                    isToday && 'bg-accent text-accent-fg font-semibold',
+                    'border-border bg-surface sticky top-0 z-10 border-b border-l px-2 py-2 text-center',
+                    isWeekend && 'bg-[color:var(--color-weekend)]/30',
                   )}
                 >
-                  {d.getDate()}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* time column + day columns */}
-          <div className="relative">
-            {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
-              <div
-                key={i}
-                className="relative border-b border-border text-[11px] text-fg-muted"
-                style={{ height: HOUR_PX }}
-              >
-                <span className="absolute -top-2 right-1.5">{formatHour(START_HOUR + i)}</span>
-              </div>
-            ))}
-          </div>
-
-          {Array.from({ length: 7 }, (_, i) => {
-            const dayStart = addDays(weekStart, i);
-            const dayStartMs = dayStart.getTime();
-            const dayEvents = events.filter((e) => {
-              const t = new Date(e.startAt).getTime();
-              return t >= dayStartMs && t < dayStartMs + DAY_MS;
-            });
-            return (
-              <div
-                key={i}
-                className={cn(
-                  'relative border-l border-border',
-                  i >= 5 && 'bg-[color:var(--color-weekend)]/10',
-                )}
-              >
-                {Array.from({ length: END_HOUR - START_HOUR }, (_, h) => (
+                  <div className="text-fg-muted text-[11px]">
+                    {['一', '二', '三', '四', '五', '六', '日'][i]}
+                  </div>
                   <div
-                    key={h}
-                    className="border-b border-border/60"
-                    style={{ height: HOUR_PX }}
-                  />
-                ))}
-                {dayEvents.map((e) => (
-                  <EventBlock key={e.id} e={e} dayStartMs={dayStartMs} />
-                ))}
-              </div>
-            );
-          })}
+                    className={cn(
+                      'mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm',
+                      isToday && 'bg-accent text-accent-fg font-semibold',
+                    )}
+                  >
+                    {d.getDate()}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* time column + day columns */}
+            <div className="relative">
+              {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
+                <div
+                  key={i}
+                  className="border-border text-fg-muted relative border-b text-[11px]"
+                  style={{ height: HOUR_PX }}
+                >
+                  <span className="absolute -top-2 right-1.5">{formatHour(START_HOUR + i)}</span>
+                </div>
+              ))}
+            </div>
+
+            {Array.from({ length: 7 }, (_, i) => {
+              const dayStart = addDays(weekStart, i);
+              const dayStartMs = dayStart.getTime();
+              const dayEvents = events.filter((e) => {
+                const t = new Date(e.startAt).getTime();
+                return t >= dayStartMs && t < dayStartMs + DAY_MS;
+              });
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    'border-border relative border-l',
+                    i >= 5 && 'bg-[color:var(--color-weekend)]/10',
+                  )}
+                >
+                  {Array.from({ length: END_HOUR - START_HOUR }, (_, h) => (
+                    <div
+                      key={h}
+                      className="border-border/60 border-b"
+                      style={{ height: HOUR_PX }}
+                    />
+                  ))}
+                  {dayEvents.map((e) => (
+                    <EventBlock key={e.id} e={e} dayStartMs={dayStartMs} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+
+      {creating !== undefined && (
+        <EventCreateDialog
+          {...(creating ? { defaultStart: creating } : {})}
+          onClose={() => setCreating(undefined)}
+        />
+      )}
+    </>
   );
 }
 
@@ -175,7 +190,7 @@ function NavButton({ onClick, label }: { onClick: () => void; label: string }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md border border-border bg-surface px-3 py-1 text-xs text-fg transition hover:bg-surface-muted"
+      className="border-border bg-surface text-fg hover:bg-surface-muted rounded-md border px-3 py-1 text-xs transition"
     >
       {label}
     </button>

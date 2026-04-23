@@ -1,6 +1,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { and, eq, isNull, lt } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/d1';
 import type { Env, Variables } from './env.js';
+import { todos } from './db/schema.js';
 import { attachSession } from './middleware/auth.js';
 import { ipCountryGuard } from './middleware/ip-guard.js';
 import { securityHeaders } from './middleware/security-headers.js';
@@ -40,9 +43,52 @@ app.onError((err, c) => {
 
 export default {
   fetch: app.fetch,
-  async scheduled(_event: ScheduledEvent, _env: Env, _ctx: ExecutionContext) {
-    // Daily rollover of uncompleted todos with rollover=true.
-    // Implementation sketch — a full version would batch by user.
-    // TODO: implement in M2 when tested end-to-end.
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext) {
+    // Daily rollover — runs at 02:00 UTC+8 (18:00 UTC previous day).
+    // Moves all uncompleted todos where rollover=true and scheduledDate < today
+    // to today's date.
+    const db = drizzle(env.DB);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayIso = today.toISOString().slice(0, 10);
+
+    await db
+      .update(todos)
+      .set({ scheduledDate: todayIso, updatedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(todos.completed, false),
+          eq(todos.rollover, true),
+          lt(todos.scheduledDate, todayIso),
+          isNull(todos.parentId), // only roll over root todos (children follow parent's date)
+        ),
+      );
+
+    // Also roll over children whose parents were just rolled over.
+    // Children with rollover=true whose parent's scheduledDate is now today.
+    // We do a second pass: update children with rollover=true where their parent is in today.
+    // This is a simple approach; for large datasets a recursive CTE would be better.
+    const rolledParents = await db
+      .select({ id: todos.id })
+      .from(todos)
+      .where(
+        and(eq(todos.completed, false), eq(todos.scheduledDate, todayIso), isNull(todos.parentId)),
+      )
+      .all();
+
+    // Batch update children for each rolled-over parent (D1 doesn't support IN subquery well).
+    for (const parent of rolledParents) {
+      await db
+        .update(todos)
+        .set({ scheduledDate: todayIso, updatedAt: new Date().toISOString() })
+        .where(
+          and(
+            eq(todos.parentId, parent.id),
+            eq(todos.completed, false),
+            eq(todos.rollover, true),
+            lt(todos.scheduledDate, todayIso),
+          ),
+        );
+    }
   },
 };

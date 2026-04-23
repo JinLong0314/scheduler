@@ -13,7 +13,7 @@
     "@babel/runtime": "^7.25.2",
     "@kairo/shared": "workspace:*",
     "expo": "~52.0.0",
-    "expo-asset": "~10.0.0",
+    "expo-asset": "~11.0.5",
     "expo-constants": "~17.0.0",
     "expo-file-system": "~18.0.0",
     "expo-font": "~13.0.0",

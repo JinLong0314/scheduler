@@ -1,0 +1,19 @@
+/* eslint-disable no-undef, @typescript-eslint/no-require-imports */
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// Watch the workspace root so Metro can resolve shared packages
+config.watchFolders = [workspaceRoot];
+
+// Resolve from both the app's node_modules and the workspace root node_modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+
+module.exports = config;

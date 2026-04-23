@@ -13,7 +13,6 @@
  * compatibility; those users will be transparently re-hashed on next login.
  */
 
-import { scrypt } from '@noble/hashes/scrypt';
 import { bytesToHex, hexToBytes, randomBytes } from '@noble/hashes/utils';
 
 const ITERATIONS = 600_000;
@@ -72,18 +71,18 @@ export function needsRehash(encoded: string): boolean {
   return encoded.startsWith('scrypt$');
 }
 
-function verifyLegacyScrypt(password: string, encoded: string): boolean {
-  const parts = encoded.split('$');
-  if (parts.length !== 6 || parts[0] !== 'scrypt') return false;
-  const salt = hexToBytes(parts[4]!);
-  const expected = hexToBytes(parts[5]!);
-  const actual = scrypt(enc.encode(password.normalize('NFKC')), salt, {
-    N: Number(parts[1]),
-    r: Number(parts[2]),
-    p: Number(parts[3]),
-    dkLen: expected.length,
-  });
-  return timingSafeEqual(actual, expected);
+function verifyLegacyScrypt(_password: string, _encoded: string): boolean {
+  // CF Workers: synchronous scrypt exceeds the 10 ms CPU budget and causes a
+  // 500 / Worker exception.  We intentionally skip verification and signal
+  // that the caller must force a password-reset instead.
+  throw new LegacyScryptError();
+}
+
+export class LegacyScryptError extends Error {
+  constructor() {
+    super('LEGACY_SCRYPT_UNSUPPORTED');
+    this.name = 'LegacyScryptError';
+  }
 }
 
 function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {

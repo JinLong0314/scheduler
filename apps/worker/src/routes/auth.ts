@@ -4,7 +4,14 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import type { Env, Variables } from '../env.js';
-import { hashPassword, needsRehash, newToken, sha256Hex, verifyPassword } from '../lib/crypto.js';
+import {
+  hashPassword,
+  LegacyScryptError,
+  needsRehash,
+  newToken,
+  sha256Hex,
+  verifyPassword,
+} from '../lib/crypto.js';
 import { users, sessions, loginAttempts } from '../db/schema.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -106,7 +113,24 @@ authRoutes.post('/login', rateLimit({ scope: 'login', limit: 10, windowSec: 60 }
     return c.json({ error: 'INVALID_CREDENTIALS' }, 401);
   }
 
-  const ok = await verifyPassword(parsed.data.password, user.passwordHash);
+  let ok: boolean;
+  try {
+    ok = await verifyPassword(parsed.data.password, user.passwordHash);
+  } catch (e) {
+    if (e instanceof LegacyScryptError) {
+      // The stored hash uses the old scrypt algorithm which cannot run inside
+      // CF Workers (CPU time limit).  Ask the user to reset their password.
+      await db.insert(loginAttempts).values({
+        id: newId(),
+        emailLower: parsed.data.email.toLowerCase(),
+        ipHash,
+        success: false,
+      });
+      return c.json({ error: 'PASSWORD_RESET_REQUIRED' }, 401);
+    }
+    throw e;
+  }
+
   await db.insert(loginAttempts).values({
     id: newId(),
     emailLower: parsed.data.email.toLowerCase(),

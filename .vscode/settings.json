@@ -1,0 +1,32 @@
+{
+  "// trust schemas": "允许 VS Code 加载远端 JSON schema（否则 turbo/tauri/wrangler 配置会有误报）",
+  "json.schemaDownload.enable": true,
+  "json.trustedSchemaDownloads": [
+    "https://turbo.build/schema.json",
+    "https://schema.tauri.app/config/2",
+    "https://json.schemastore.org/package.json",
+    "https://json.schemastore.org/tsconfig.json"
+  ],
+
+  "// tailwind": "关闭 VS Code 自带 CSS 校验器对 @tailwind/@apply 等指令的误报，改由 Tailwind 插件处理",
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+  "tailwindCSS.experimental.classRegex": [["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]],
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}

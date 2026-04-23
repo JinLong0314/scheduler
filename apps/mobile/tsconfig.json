@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@kairo/shared": ["../../packages/shared/src"]
     }

@@ -1,21 +1,36 @@
-import { Button, Card, CardBody, CardHeader, ThemeSwitcher } from '@kairo/ui';
+import { Button, Card, CardBody, CardHeader } from '@kairo/ui';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../shared/lib/api-client';
 import { useAuthStore } from '../../shared/lib/auth-store';
+import { MonthView } from '../calendar/month-view';
 import { WeekView } from '../calendar/week-view';
 import { TodoList } from '../todos/todo-list';
 
-function today(): string {
+type CalendarMode = 'month' | 'week';
+
+function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function addMonths(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setMonth(r.getMonth() + n);
+  return r;
+}
+
+function monthLabel(d: Date): string {
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
 }
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
   const navigate = useNavigate();
-  const [date, setDate] = useState<string>(today());
+  const [date, setDate] = useState<string>(todayIso());
+  const [mode, setMode] = useState<CalendarMode>('month');
+  const [monthAnchor, setMonthAnchor] = useState<Date>(() => new Date());
 
   const logout = async () => {
     try {
@@ -42,11 +57,16 @@ export function DashboardPage() {
         <Card>
           <CardBody className="space-y-3">
             <div>
-              <div className="text-xs text-fg-muted">{greeting}，</div>
+              <div className="text-fg-muted text-xs">{greeting}，</div>
               <div className="text-lg font-semibold">{user?.displayName ?? '访客'}</div>
-              <div className="text-[11px] text-fg-muted">{user?.email}</div>
+              <div className="text-fg-muted text-[11px]">{user?.email}</div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Link to="/settings" className="flex-1">
+                <Button variant="secondary" size="sm" className="w-full">
+                  设置
+                </Button>
+              </Link>
               {user?.role === 'admin' && (
                 <Link to="/admin" className="flex-1">
                   <Button variant="secondary" size="sm" className="w-full">
@@ -70,17 +90,21 @@ export function DashboardPage() {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg outline-none focus:border-accent"
+              className="border-border bg-surface text-fg focus:border-accent w-full rounded-md border px-3 py-2 text-sm outline-none"
             />
           </CardBody>
         </Card>
 
         <Card>
           <CardHeader>
-            <h3 className="text-sm font-semibold">外观</h3>
+            <h3 className="text-sm font-semibold">快捷入口</h3>
           </CardHeader>
           <CardBody>
-            <ThemeSwitcher />
+            <Link to="/week">
+              <Button variant="primary" size="sm" className="w-full">
+                全屏周视图
+              </Button>
+            </Link>
           </CardBody>
         </Card>
       </aside>
@@ -88,9 +112,79 @@ export function DashboardPage() {
       {/* Main */}
       <main className="flex min-w-0 flex-1 flex-col gap-4">
         <TodoList date={date} />
-        <div className="min-h-[600px]">
-          <WeekView />
-        </div>
+
+        <Card className="flex min-h-[640px] flex-col">
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold">日历</h2>
+              {mode === 'month' && (
+                <span className="text-fg-muted text-xs">{monthLabel(monthAnchor)}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {mode === 'month' && (
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMonthAnchor((a) => addMonths(a, -1))}
+                  >
+                    ← 上月
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setMonthAnchor(new Date())}>
+                    本月
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setMonthAnchor((a) => addMonths(a, 1))}
+                  >
+                    下月 →
+                  </Button>
+                </div>
+              )}
+              <div className="border-border inline-flex overflow-hidden rounded-md border">
+                <button
+                  type="button"
+                  onClick={() => setMode('month')}
+                  className={
+                    'px-3 py-1 text-xs transition ' +
+                    (mode === 'month'
+                      ? 'bg-accent text-accent-fg'
+                      : 'bg-surface text-fg hover:bg-surface-muted')
+                  }
+                >
+                  月视图
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('week')}
+                  className={
+                    'border-border border-l px-3 py-1 text-xs transition ' +
+                    (mode === 'week'
+                      ? 'bg-accent text-accent-fg'
+                      : 'bg-surface text-fg hover:bg-surface-muted')
+                  }
+                >
+                  周视图
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody className="flex-1 p-0">
+            {mode === 'month' ? (
+              <MonthView
+                anchor={monthAnchor}
+                selectedIso={date}
+                onDayClick={(iso) => setDate(iso)}
+              />
+            ) : (
+              <div className="h-[640px]">
+                <WeekView />
+              </div>
+            )}
+          </CardBody>
+        </Card>
       </main>
     </div>
   );

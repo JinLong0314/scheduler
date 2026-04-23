@@ -2,6 +2,21 @@ import { Button, Card, CardBody, CardHeader, Input, Label } from '@kairo/ui';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '../../shared/lib/api-client';
+import { useAuthStore } from '../../shared/lib/auth-store';
+
+interface LoginResponse {
+  token: string;
+  expiresAt: string;
+  user: {
+    id: string;
+    email: string;
+    displayName: string;
+    role: 'admin' | 'user';
+    themeId: string;
+    timezone: string;
+    locale: string;
+  };
+}
 
 export function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -10,6 +25,7 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const setSession = useAuthStore((s) => s.setSession);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +36,14 @@ export function RegisterPage() {
         method: 'POST',
         json: { email, password, displayName, turnstileToken: 'dev-bypass' },
       });
-      navigate('/login', { replace: true });
+      // Auto-login with the same credentials the user just entered so
+      // they don't have to retype the password on the login page.
+      const login = await api<LoginResponse>('/auth/login', {
+        method: 'POST',
+        json: { email, password },
+      });
+      setSession(login);
+      navigate('/', { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(
@@ -28,7 +51,9 @@ export function RegisterPage() {
             ? '此邮箱已被注册'
             : err.code === 'INVALID_INPUT'
               ? '输入不符合要求（密码需 10+ 位，含大小写与数字）'
-              : err.code,
+              : err.code === 'INVALID_CREDENTIALS'
+                ? '注册成功，但自动登录失败，请手动登录'
+                : err.code,
         );
       } else {
         setError('网络错误');
@@ -43,7 +68,7 @@ export function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <h1 className="text-xl font-semibold">注册 Kairo</h1>
-          <p className="mt-1 text-xs text-fg-muted">首位注册者将成为管理员</p>
+          <p className="text-fg-muted mt-1 text-xs">首位注册者将成为管理员</p>
         </CardHeader>
         <CardBody>
           <form onSubmit={onSubmit} className="space-y-3">
@@ -77,13 +102,13 @@ export function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              <p className="mt-1 text-[11px] text-fg-muted">至少 10 位，包含大小写字母与数字</p>
+              <p className="text-fg-muted mt-1 text-[11px]">至少 10 位，包含大小写字母与数字</p>
             </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && <p className="text-danger text-sm">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? '创建中…' : '创建账号'}
             </Button>
-            <p className="text-center text-xs text-fg-muted">
+            <p className="text-fg-muted text-center text-xs">
               已有账号？{' '}
               <Link to="/login" className="text-accent hover:underline">
                 登录

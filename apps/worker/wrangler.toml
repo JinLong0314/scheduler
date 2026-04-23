@@ -8,15 +8,15 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "kairo_db"
-database_id = "PLACEHOLDER_DB_ID"
+database_id = "18751a34-a505-48bc-ad40-c3c80d4a2b8c"
 migrations_dir = "migrations"
 
 # KV — session store + config cache
 [[kv_namespaces]]
 binding = "KV"
-id = "PLACEHOLDER_KV_ID"
+id = "74b7ff8ebde1431da32913690b41e5ed"
 
-# R2 — attachments & backups
+# R2 — attachments, backups & release downloads
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "kairo-attachments"
@@ -26,12 +26,17 @@ bucket_name = "kairo-attachments"
 # queue = "kairo-reminders"
 # binding = "REMINDERS_Q"
 
+# Custom domain — binds Worker to kairo-api.jackie-macau.top
+[[routes]]
+pattern = "kairo-api.jackie-macau.top"
+custom_domain = true
+
 # Cron — daily rollover of uncompleted todos (02:00 UTC+8 = 18:00 UTC)
 [triggers]
 crons = ["0 18 * * *"]
 
 [vars]
-ENV = "dev"
+ENV = "production"
 
 # Secrets (DO NOT put values here; use `wrangler secret put`):
 #   SESSION_SECRET       — HMAC key for CSRF tokens

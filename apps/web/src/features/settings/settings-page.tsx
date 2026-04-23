@@ -2,6 +2,22 @@ import { Button, Card, CardBody, CardHeader, ThemeSwitcher } from '@kairo/ui';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../shared/lib/auth-store';
 
+const DOWNLOADS = [
+  {
+    label: '下载 Windows (.msi)',
+    href: 'https://kairo-api.jackie-macau.top/desktop/download/windows',
+  },
+  {
+    label: '下载 Linux (.deb)',
+    href: 'https://kairo-api.jackie-macau.top/desktop/download/linux-deb',
+  },
+  {
+    label: 'Linux AppImage',
+    href: 'https://kairo-api.jackie-macau.top/desktop/download/linux-appimage',
+  },
+  { label: '下载 Android APK', href: 'https://kairo-api.jackie-macau.top/mobile/download/android' },
+];
+
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user);
 
@@ -67,6 +83,24 @@ export function SettingsPage() {
           </CardBody>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <h2 className="text-sm font-semibold">下载应用</h2>
+          <p className="text-fg-muted mt-1 text-xs">
+            安装桌面端或 Android 客户端，登录同一账号即可同步数据。
+          </p>
+        </CardHeader>
+        <CardBody className="flex flex-wrap gap-2">
+          {DOWNLOADS.map((d) => (
+            <a key={d.href} href={d.href} download>
+              <Button variant="secondary" size="sm">
+                {d.label}
+              </Button>
+            </a>
+          ))}
+        </CardBody>
+      </Card>
     </div>
   );
 }

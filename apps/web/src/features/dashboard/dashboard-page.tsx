@@ -6,6 +6,7 @@ import { useAuthStore } from '../../shared/lib/auth-store';
 import { MonthView } from '../calendar/month-view';
 import { WeekView } from '../calendar/week-view';
 import { QuickCreateDialog } from '../create/quick-create-dialog';
+import { IcsImportExport } from '../events/ics-import-export';
 import { TodoList } from '../todos/todo-list';
 
 type CalendarMode = 'month' | 'week';
@@ -93,7 +94,10 @@ export function DashboardPage() {
             <input
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                setDate(e.target.value);
+                if (e.target.value) setMonthAnchor(new Date(e.target.value + 'T00:00:00'));
+              }}
               className="border-border bg-surface text-fg focus:border-accent w-full rounded-md border px-3 py-2 text-sm outline-none"
             />
           </CardBody>
@@ -103,12 +107,13 @@ export function DashboardPage() {
           <CardHeader>
             <h3 className="text-sm font-semibold">快捷入口</h3>
           </CardHeader>
-          <CardBody>
+          <CardBody className="space-y-3">
             <Link to="/week">
               <Button variant="primary" size="sm" className="w-full">
                 全屏周视图
               </Button>
             </Link>
+            <IcsImportExport />
           </CardBody>
         </Card>
       </aside>

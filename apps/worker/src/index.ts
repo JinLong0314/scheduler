@@ -11,20 +11,39 @@ import { authRoutes } from './routes/auth.js';
 import { todoRoutes } from './routes/todos.js';
 import { eventRoutes } from './routes/events.js';
 import { adminRoutes } from './routes/admin.js';
+import { downloadRoutes } from './routes/downloads.js';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-app.use('*', securityHeaders);
+// Allowed browser origins — add new front-end domains here.
+const ALLOWED_ORIGINS = [
+  'https://kairo.jackie-macau.top',
+  // Cloudflare Pages (production + preview deployments)
+  'https://kairo-web.pages.dev',
+  'https://kairo-web-3ja.pages.dev',
+  // local dev
+  'http://localhost:5173',
+  'http://localhost:4173',
+];
+
+// CORS must be the VERY FIRST middleware so preflight always gets CORS headers.
 app.use(
   '*',
   cors({
-    origin: (origin) => origin ?? '*',
-    credentials: true,
+    origin: (origin) => {
+      if (!origin) return '';
+      if (ALLOWED_ORIGINS.includes(origin)) return origin;
+      // Allow Cloudflare Pages preview deployments
+      if (/^https:\/\/[a-z0-9]+-kairo-web-3ja\.pages\.dev$/.test(origin)) return origin;
+      return '';
+    },
     allowHeaders: ['Authorization', 'Content-Type'],
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
     maxAge: 86400,
   }),
 );
+app.use('*', securityHeaders);
 app.use('*', ipCountryGuard);
 app.use('*', attachSession);
 
@@ -34,6 +53,10 @@ app.route('/auth', authRoutes);
 app.route('/todos', todoRoutes);
 app.route('/events', eventRoutes);
 app.route('/admin', adminRoutes);
+
+// Download routes are public — no auth, no IP guard.
+// Served before the IP guard middleware runs (handled at route level).
+app.route('/', downloadRoutes);
 
 app.notFound((c) => c.json({ error: 'NOT_FOUND' }, 404));
 app.onError((err, c) => {

@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { Hono } from 'hono';
 import type { Env, Variables } from '../env.js';
-import { hashPassword, newToken, sha256Hex, verifyPassword } from '../lib/crypto.js';
+import { hashPassword, needsRehash, newToken, sha256Hex, verifyPassword } from '../lib/crypto.js';
 import { users, sessions, loginAttempts } from '../db/schema.js';
 import { rateLimit } from '../middleware/rate-limit.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -114,6 +114,12 @@ authRoutes.post('/login', rateLimit({ scope: 'login', limit: 10, windowSec: 60 }
     success: ok,
   });
   if (!ok) return c.json({ error: 'INVALID_CREDENTIALS' }, 401);
+
+  // Transparently upgrade legacy scrypt hashes to PBKDF2 on successful login.
+  if (needsRehash(user.passwordHash)) {
+    const newHash = await hashPassword(parsed.data.password);
+    await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, user.id));
+  }
 
   const token = newToken();
   const tokenHash = await sha256Hex(token);

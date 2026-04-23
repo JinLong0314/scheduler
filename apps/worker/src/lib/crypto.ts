@@ -1,34 +1,82 @@
 /**
- * Password hashing.
+ * Password hashing using PBKDF2-HMAC-SHA256 via Web Crypto API.
  *
- * NOTE: Cloudflare Workers cannot run native argon2id in the main isolate.
- * We use scrypt (from @noble/hashes), which is memory-hard and acceptable.
- * Spec requires argon2id; swap to a WASM argon2 package in a future iteration.
+ * Why PBKDF2 instead of argon2/scrypt?
+ *   Cloudflare Workers enforces a CPU time limit (10ms on free tier).
+ *   JS-implemented scrypt at N=2^15 easily bursts past that, returning
+ *   503 Service Unavailable without CORS headers (user-facing CORS error).
+ *   PBKDF2 via crypto.subtle runs natively and does NOT count against
+ *   the JS CPU quota, so we can safely use a high iteration count.
+ *
+ * 600,000 iterations matches the current OWASP recommendation (2023).
+ * Legacy scrypt-hashed passwords are still accepted for backward
+ * compatibility; those users will be transparently re-hashed on next login.
  */
 
 import { scrypt } from '@noble/hashes/scrypt';
 import { bytesToHex, hexToBytes, randomBytes } from '@noble/hashes/utils';
 
-const N = 2 ** 15; // CPU/memory cost
-const r = 8;
-const p = 1;
-const dkLen = 32;
+const ITERATIONS = 600_000;
+const SALT_BYTES = 16;
+const HASH_BITS = 256;
 
 const enc = new TextEncoder();
 
+async function deriveKey(
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<Uint8Array> {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password.normalize('NFKC')),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, hash: 'SHA-256', iterations },
+    keyMaterial,
+    HASH_BITS,
+  );
+  return new Uint8Array(bits);
+}
+
 export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const hash = scrypt(enc.encode(password.normalize('NFKC')), salt, { N, r, p, dkLen });
-  return `scrypt$${N}$${r}$${p}$${bytesToHex(salt)}$${bytesToHex(hash)}`;
+  const salt = randomBytes(SALT_BYTES);
+  const hash = await deriveKey(password, salt, ITERATIONS);
+  return `pbkdf2-sha256$${ITERATIONS}$${bytesToHex(salt)}$${bytesToHex(hash)}`;
 }
 
 export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
+  // Legacy scrypt path — keeps existing accounts working after the migration.
+  if (encoded.startsWith('scrypt$')) {
+    return verifyLegacyScrypt(password, encoded);
+  }
+
+  const parts = encoded.split('$');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2-sha256') return false;
+  const iterations = Number(parts[1]);
+  if (!Number.isFinite(iterations) || iterations < 1) return false;
+  const salt = hexToBytes(parts[2]!);
+  const expected = hexToBytes(parts[3]!);
+  const actual = await deriveKey(password, salt, iterations);
+  return timingSafeEqual(actual, expected);
+}
+
+/**
+ * Returns true if the stored hash uses the legacy scrypt format and should be
+ * re-hashed with the current algorithm on next successful login.
+ */
+export function needsRehash(encoded: string): boolean {
+  return encoded.startsWith('scrypt$');
+}
+
+function verifyLegacyScrypt(password: string, encoded: string): boolean {
   const parts = encoded.split('$');
   if (parts.length !== 6 || parts[0] !== 'scrypt') return false;
-  const saltHex = parts[4]!;
-  const hashHex = parts[5]!;
-  const salt = hexToBytes(saltHex);
-  const expected = hexToBytes(hashHex);
+  const salt = hexToBytes(parts[4]!);
+  const expected = hexToBytes(parts[5]!);
   const actual = scrypt(enc.encode(password.normalize('NFKC')), salt, {
     N: Number(parts[1]),
     r: Number(parts[2]),

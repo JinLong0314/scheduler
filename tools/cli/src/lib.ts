@@ -1,9 +1,24 @@
 import { execa } from 'execa';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+
+/**
+ * Walk up from process.cwd() looking for pnpm-workspace.yaml.
+ * Falls back to process.cwd() if none found.
+ */
+export function repoRoot(): string {
+  let dir = process.cwd();
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return resolve(process.cwd());
+}
 
 export function loadEnvLocal(): Record<string, string> {
-  const path = join(process.cwd(), '.env.local');
+  const path = join(repoRoot(), '.env.local');
   if (!existsSync(path)) return {};
   const out: Record<string, string> = {};
   for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {

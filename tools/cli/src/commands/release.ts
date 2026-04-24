@@ -72,6 +72,60 @@ async function deployWorker(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 /**
+ * On Windows, if MSVC toolchain is installed but vcvars isn't loaded in the
+ * current shell, detect it via vswhere and source vcvars64.bat so cargo/link
+ * can find cl.exe/link.exe. Returns env merged with MSVC paths, or the
+ * original env if MSVC is not installed.
+ */
+async function withMsvcEnv(env: NodeJS.ProcessEnv): Promise<NodeJS.ProcessEnv> {
+  if (process.platform !== 'win32') return env;
+  // If link.exe is already on PATH, assume vcvars already loaded.
+  try {
+    await execa('where.exe', ['link.exe'], { env });
+    return env;
+  } catch {
+    // not found, need to locate MSVC
+  }
+  const vswhere = 'C:/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe';
+  if (!existsSync(vswhere)) return env;
+  let installPath: string;
+  try {
+    const { stdout } = await execa(
+      vswhere,
+      [
+        '-products',
+        '*',
+        '-requires',
+        'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+        '-property',
+        'installationPath',
+        '-latest',
+      ],
+      { env },
+    );
+    installPath = stdout.trim().split(/\r?\n/)[0];
+    if (!installPath) return env;
+  } catch {
+    return env;
+  }
+  const vcvars = join(installPath, 'VC', 'Auxiliary', 'Build', 'vcvars64.bat');
+  if (!existsSync(vcvars)) return env;
+  try {
+    // Dump the environment after sourcing vcvars64.bat.
+    const { stdout } = await execa('cmd.exe', ['/c', `call "${vcvars}" >NUL && set`], { env });
+    const merged: NodeJS.ProcessEnv = { ...env };
+    for (const line of stdout.split(/\r?\n/)) {
+      const eq = line.indexOf('=');
+      if (eq <= 0) continue;
+      merged[line.slice(0, eq)] = line.slice(eq + 1);
+    }
+    return merged;
+  } catch {
+    return env;
+  }
+}
+
+/**
  * Build the Tauri Windows desktop EXE. Tolerates failure (Rust/MSVC may
  * be missing locally) — logs warning and returns null so the rest of the
  * pipeline continues.
@@ -79,9 +133,10 @@ async function deployWorker(env: NodeJS.ProcessEnv): Promise<void> {
 async function buildDesktop(env: NodeJS.ProcessEnv): Promise<string | null> {
   const s = spinner();
   s.start('构建 Desktop (Tauri)…');
+  const buildEnv = await withMsvcEnv(env);
   try {
     const result = await execa('pnpm', ['--filter', '@kairo/desktop', 'build'], {
-      env,
+      env: buildEnv,
       stdio: ['ignore', 'inherit', 'inherit'],
       cwd: repoRoot(),
       reject: false,
@@ -90,7 +145,15 @@ async function buildDesktop(env: NodeJS.ProcessEnv): Promise<string | null> {
       s.stop('Desktop 构建失败，跳过（通常为本机缺少 Rust/MSVC 工具链）');
       return null;
     }
-    const exePath = join(repoRoot(), 'apps', 'desktop', 'target', 'release', 'kairo-desktop.exe');
+    const exePath = join(
+      repoRoot(),
+      'apps',
+      'desktop',
+      'src-tauri',
+      'target',
+      'release',
+      'kairo-desktop.exe',
+    );
     if (!existsSync(exePath)) {
       s.stop('Desktop 构建产物未找到，跳过上传');
       log.warn(`未找到 ${exePath}`);

@@ -1,9 +1,10 @@
 {
+  "$schema": "https://schema.tauri.app/config/2.0.0",
   "productName": "Kairo",
   "version": "0.1.0",
   "identifier": "app.kairo.desktop",
   "build": {
-    "frontendDist": "../web/dist",
+    "frontendDist": "../../web/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm --filter @kairo/web dev",
     "beforeBuildCommand": "pnpm --filter @kairo/web build"
@@ -21,20 +22,13 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https://*.kairo.app https://api.kairo.app; img-src 'self' data: blob: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'"
+      "csp": "default-src 'self'; connect-src 'self' https://kairo-api.jackie-macau.top https://*.kairo.app https://api.kairo.app; img-src 'self' data: blob: https://*.tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; script-src 'self'"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis", "app", "dmg", "deb", "appimage"],
-    "icon": ["icons/icon.png"]
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico", "icons/icon.png"]
   },
-  "plugins": {
-    "updater": {
-      "active": true,
-      "endpoints": ["https://update.kairo.app/desktop/{{target}}/{{current_version}}"],
-      "dialog": true,
-      "pubkey": "REPLACE_WITH_PUBLIC_KEY"
-    }
-  }
+  "plugins": {}
 }

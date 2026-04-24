@@ -1,23 +1,10 @@
 import { log, spinner } from '@clack/prompts';
 import { execa } from 'execa';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
-function loadEnvLocal(): Record<string, string> {
-  const path = join(process.cwd(), '.env.local');
-  if (!existsSync(path)) return {};
-  const out: Record<string, string> = {};
-  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && m[1] && m[2] !== undefined) out[m[1]] = m[2];
-  }
-  return out;
-}
+import { mergedEnv } from '../lib.js';
 
 export async function deployCommand(args: string[]): Promise<void> {
   const targets = args.length > 0 ? args : ['worker', 'web'];
-  const envLocal = loadEnvLocal();
-  const env = { ...process.env, ...envLocal };
+  const env = mergedEnv();
 
   for (const target of targets) {
     const s = spinner();

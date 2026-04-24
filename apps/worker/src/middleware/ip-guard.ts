@@ -6,7 +6,9 @@ import type { Env } from '../env.js';
  * Fails closed on config fetch errors.
  */
 export const ipCountryGuard: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
-  const raw = await c.env.KV.get('admin:config', 'json');
+  // cacheTtl lets each Cloudflare POP serve this from local cache for 60s,
+  // avoiding a central KV roundtrip on every request.
+  const raw = await c.env.KV.get('admin:config', { type: 'json', cacheTtl: 60 });
   if (!raw) return next();
   const cfg = raw as {
     ipAllowlist?: string[];

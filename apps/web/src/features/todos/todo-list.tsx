@@ -36,7 +36,7 @@ export function TodoList({ date }: Props) {
         <div>
           <h2 className="text-sm font-semibold">待办 · {date}</h2>
           <p className="text-fg-muted mt-0.5 text-xs">
-            {doneCount}/{totalCount} 已完�?{' '}
+            {doneCount}/{totalCount} 已完成{' '}
             {totalCount > doneCount && (
               <span className="text-accent ml-2">· {totalCount - doneCount} 项待处理</span>
             )}
@@ -44,7 +44,7 @@ export function TodoList({ date }: Props) {
         </div>
         {totalCount > 0 && doneCount === totalCount && (
           <span className="bg-success/15 text-success rounded-full px-2 py-0.5 text-[11px] font-medium">
-            全部完成 �?{' '}
+            全部完成 ✓{' '}
           </span>
         )}
       </CardHeader>
@@ -60,7 +60,7 @@ export function TodoList({ date }: Props) {
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="text-2xl">🍵</div>
             <p className="text-fg-muted mt-2 text-sm">今天没有任务</p>
-            <p className="text-fg-muted/70 text-xs">点击右下�?+ 新建待办</p>
+            <p className="text-fg-muted/70 text-xs">点击右下角 + 新建待办</p>
           </div>
         ) : (
           <ul className="space-y-0.5 pb-1">
@@ -140,13 +140,13 @@ function TodoNode({ node, depth, onToggle }: NodeProps) {
             )}
             {node.rollover && !node.completed && (
               <span className="bg-surface-muted text-fg-muted rounded px-1.5 py-0.5 text-[10px]">
-                �?{' '}
+                顺延{' '}
               </span>
             )}
           </div>
           {hasChildren && (
             <p className="text-fg-muted mt-0.5 text-[11px]">
-              {node.children.filter((c) => c.completed).length}/{node.children.length} 子任�?{' '}
+              {node.children.filter((c) => c.completed).length}/{node.children.length} 子任务{' '}
             </p>
           )}
         </div>

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../../shared/lib/api-client';
 import { QuickCreateDialog } from '../create/quick-create-dialog';
+import { EventDetailDialog } from '../events/event-detail-dialog';
 import { useEvents, type EventItem } from '../events/use-events';
 import { useTodosRange, type TodoItem } from '../todos/use-todos';
 
@@ -57,6 +58,7 @@ export function WeekView() {
   const weekStart = useMemo(() => mondayOf(anchor), [anchor]);
   // null = closed; '' or ISO = open
   const [creating, setCreating] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
 
   const from = weekStart.toISOString();
   const to = addDays(weekStart, 7).toISOString();
@@ -195,7 +197,12 @@ export function WeekView() {
                     />
                   ))}
                   {dayEvents.map((e) => (
-                    <EventBlock key={e.id} e={e} dayStartMs={dayStartMs} />
+                    <EventBlock
+                      key={e.id}
+                      e={e}
+                      dayStartMs={dayStartMs}
+                      onClick={() => setSelectedEvent(e)}
+                    />
                   ))}
                 </div>
               );
@@ -211,19 +218,33 @@ export function WeekView() {
           onClose={() => setCreating(null)}
         />
       )}
+
+      {selectedEvent && (
+        <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
     </>
   );
 }
 
-function EventBlock({ e, dayStartMs }: { e: EventItem; dayStartMs: number }) {
+function EventBlock({
+  e,
+  dayStartMs,
+  onClick,
+}: {
+  e: EventItem;
+  dayStartMs: number;
+  onClick: () => void;
+}) {
   const start = new Date(e.startAt).getTime();
   const end = new Date(e.endAt).getTime();
   const top = Math.max(0, ((start - dayStartMs) / 3_600_000) * HOUR_PX);
   const height = Math.max(20, ((end - start) / 3_600_000) * HOUR_PX - 2);
   const color = COLOR_KEYS[e.colorKey] ?? COLOR_KEYS.accent;
   return (
-    <div
-      className="absolute left-1 right-1 overflow-hidden rounded-sm border border-white/20 px-1.5 py-1 text-[11px] text-white shadow-sm"
+    <button
+      type="button"
+      onClick={onClick}
+      className="absolute left-1 right-1 overflow-hidden rounded-sm border border-white/20 px-1.5 py-1 text-left text-[11px] text-white shadow-sm transition hover:brightness-110"
       style={{ top, height, background: color }}
       title={`${e.title}\n${new Date(e.startAt).toLocaleTimeString()} - ${new Date(e.endAt).toLocaleTimeString()}`}
     >
@@ -232,7 +253,7 @@ function EventBlock({ e, dayStartMs }: { e: EventItem; dayStartMs: number }) {
         {new Date(e.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
         {new Date(e.endAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
-    </div>
+    </button>
   );
 }
 

@@ -18,10 +18,16 @@ export const attachSession: MiddlewareHandler<{ Bindings: Env; Variables: Variab
   if (!token) return next();
 
   const tokenHash = await sha256Hex(token);
-  const raw = await c.env.KV.get(`sess:${tokenHash}`, 'json');
+  // cacheTtl=60 lets each POP cache the session lookup locally; sessions
+  // are effectively immutable for their lifetime so stale reads are safe.
+  const raw = await c.env.KV.get(`sess:${tokenHash}`, { type: 'json', cacheTtl: 60 });
   if (!raw) return next();
 
-  const { userId, role, expiresAt } = raw as { userId: string; role: 'admin' | 'user'; expiresAt: string };
+  const { userId, role, expiresAt } = raw as {
+    userId: string;
+    role: 'admin' | 'user';
+    expiresAt: string;
+  };
   if (new Date(expiresAt).getTime() < Date.now()) return next();
 
   c.set('userId', userId);

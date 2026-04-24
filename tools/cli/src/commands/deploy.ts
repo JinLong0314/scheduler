@@ -32,7 +32,27 @@ export async function deployCommand(args: string[]): Promise<void> {
         s.start('构建 Web…');
         await execa('pnpm', ['--filter', '@kairo/web', 'build'], { env, stdio: 'inherit' });
         s.stop('Web 构建完成');
-        log.info('→ 使用 wrangler pages deploy 或 Cloudflare Pages UI 上传 apps/web/dist');
+
+        const projectName = env.CF_PAGES_PROJECT ?? 'kairo-web';
+        const branch = env.CF_PAGES_BRANCH ?? 'main';
+        const s2 = spinner();
+        s2.start(`部署 Web 到 Cloudflare Pages (${projectName}/${branch})…`);
+        // wrangler is installed in the worker workspace; use npx to auto-resolve
+        // from the hoisted node_modules (pnpm node-linker=hoisted).
+        await execa(
+          'npx',
+          [
+            'wrangler',
+            'pages',
+            'deploy',
+            'apps/web/dist',
+            `--project-name=${projectName}`,
+            `--branch=${branch}`,
+            '--commit-dirty=true',
+          ],
+          { env, stdio: 'inherit' },
+        );
+        s2.stop('Web 部署完成');
         break;
       }
       case 'desktop': {

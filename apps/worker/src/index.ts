@@ -21,6 +21,10 @@ const ALLOWED_ORIGINS = [
   // Cloudflare Pages (production + preview deployments)
   'https://kairo-web.pages.dev',
   'https://kairo-web-3ja.pages.dev',
+  // Tauri desktop (v2 custom protocol / WebView2)
+  'tauri://localhost',
+  'https://tauri.localhost',
+  'http://tauri.localhost',
   // local dev
   'http://localhost:5173',
   'http://localhost:4173',

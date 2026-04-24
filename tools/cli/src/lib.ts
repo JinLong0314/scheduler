@@ -50,8 +50,11 @@ export async function uploadToR2(options: {
     'put',
     `${bucket}/${options.key}`,
     `--file=${options.filePath}`,
-    '--remote',
   ];
   if (options.contentType) args.push(`--content-type=${options.contentType}`);
-  await execa('npx', args, { env: options.env, stdio: 'inherit' });
+  await execa('npx', args, {
+    cwd: join(repoRoot(), 'apps', 'worker'),
+    env: options.env,
+    stdio: 'inherit',
+  });
 }

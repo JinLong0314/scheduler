@@ -229,11 +229,10 @@ async function triggerMobileBuild(env: NodeJS.ProcessEnv): Promise<string | null
 
 async function fetchEasBuild(id: string, env: NodeJS.ProcessEnv): Promise<EasBuildInfo | null> {
   try {
-    const { stdout } = await execa(
-      'npx',
-      ['eas-cli', 'build:view', id, '--json', '--non-interactive'],
-      { cwd: join(repoRoot(), 'apps', 'mobile'), env },
-    );
+    const { stdout } = await execa('npx', ['eas-cli', 'build:view', id, '--json'], {
+      cwd: join(repoRoot(), 'apps', 'mobile'),
+      env,
+    });
     const jsonStart = stdout.indexOf('{');
     if (jsonStart < 0) return null;
     return JSON.parse(stdout.slice(jsonStart)) as EasBuildInfo;
@@ -257,14 +256,15 @@ export async function waitAndUploadMobile(
   let info: EasBuildInfo | null = null;
   while (Date.now() < deadline) {
     info = await fetchEasBuild(buildId, env);
-    if (info && info.status === 'finished' && info.artifacts?.buildUrl) break;
-    if (info && (info.status === 'errored' || info.status === 'canceled')) {
-      s.stop(`EAS 构建 ${info.status}`);
+    const st = info?.status?.toUpperCase();
+    if (info && st === 'FINISHED' && info.artifacts?.buildUrl) break;
+    if (info && (st === 'ERRORED' || st === 'CANCELED')) {
+      s.stop(`EAS 构建 ${st}`);
       return false;
     }
     await new Promise((r) => setTimeout(r, 20_000));
   }
-  if (!info || info.status !== 'finished' || !info.artifacts?.buildUrl) {
+  if (!info || info.status?.toUpperCase() !== 'FINISHED' || !info.artifacts?.buildUrl) {
     s.stop('EAS 构建超时');
     return false;
   }

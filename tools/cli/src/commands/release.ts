@@ -3,7 +3,7 @@ import { execa } from 'execa';
 import { existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import pc from 'picocolors';
-import { mergedEnv, uploadToR2 } from '../lib.js';
+import { mergedEnv, repoRoot, uploadToR2 } from '../lib.js';
 
 interface ReleaseFlags {
   web: boolean;
@@ -29,7 +29,11 @@ function parseFlags(args: string[]): ReleaseFlags {
 async function buildWeb(env: NodeJS.ProcessEnv): Promise<void> {
   const s = spinner();
   s.start('构建 Web…');
-  await execa('pnpm', ['--filter', '@kairo/web', 'build'], { env, stdio: 'inherit' });
+  await execa('pnpm', ['--filter', '@kairo/web', 'build'], {
+    env,
+    stdio: ['ignore', 'inherit', 'inherit'],
+    cwd: repoRoot(),
+  });
   s.stop('Web 构建完成');
 }
 
@@ -49,7 +53,7 @@ async function deployWebPages(env: NodeJS.ProcessEnv): Promise<void> {
       `--branch=${branch}`,
       '--commit-dirty=true',
     ],
-    { env, stdio: 'inherit' },
+    { env, stdio: ['ignore', 'inherit', 'inherit'], cwd: repoRoot() },
   );
   s.stop('Web 部署完成');
 }
@@ -57,7 +61,13 @@ async function deployWebPages(env: NodeJS.ProcessEnv): Promise<void> {
 async function deployWorker(env: NodeJS.ProcessEnv): Promise<void> {
   const s = spinner();
   s.start('部署 Worker (Cloudflare)…');
-  await execa('pnpm', ['--filter', '@kairo/worker', 'deploy'], { env, stdio: 'inherit' });
+  // Use `run deploy` so pnpm doesn't interpret `deploy` as its built-in
+  // deployment subcommand.
+  await execa('pnpm', ['--filter', '@kairo/worker', 'run', 'deploy'], {
+    env,
+    stdio: ['ignore', 'inherit', 'inherit'],
+    cwd: repoRoot(),
+  });
   s.stop('Worker 部署完成');
 }
 
@@ -70,15 +80,17 @@ async function buildDesktop(env: NodeJS.ProcessEnv): Promise<string | null> {
   const s = spinner();
   s.start('构建 Desktop (Tauri)…');
   try {
-    await execa('pnpm', ['--filter', '@kairo/desktop', 'build'], { env, stdio: 'inherit' });
-    const exePath = join(
-      process.cwd(),
-      'apps',
-      'desktop',
-      'target',
-      'release',
-      'kairo-desktop.exe',
-    );
+    const result = await execa('pnpm', ['--filter', '@kairo/desktop', 'build'], {
+      env,
+      stdio: ['ignore', 'inherit', 'inherit'],
+      cwd: repoRoot(),
+      reject: false,
+    });
+    if (result.exitCode !== 0) {
+      s.stop('Desktop 构建失败，跳过（通常为本机缺少 Rust/MSVC 工具链）');
+      return null;
+    }
+    const exePath = join(repoRoot(), 'apps', 'desktop', 'target', 'release', 'kairo-desktop.exe');
     if (!existsSync(exePath)) {
       s.stop('Desktop 构建产物未找到，跳过上传');
       log.warn(`未找到 ${exePath}`);
@@ -133,7 +145,7 @@ async function triggerMobileBuild(env: NodeJS.ProcessEnv): Promise<string | null
         '--no-wait',
         '--json',
       ],
-      { cwd: join(process.cwd(), 'apps', 'mobile'), env },
+      { cwd: join(repoRoot(), 'apps', 'mobile'), env },
     );
     // EAS prints the JSON array at the end; find the first '['.
     const jsonStart = stdout.indexOf('[');
@@ -157,7 +169,7 @@ async function fetchEasBuild(id: string, env: NodeJS.ProcessEnv): Promise<EasBui
     const { stdout } = await execa(
       'npx',
       ['eas-cli', 'build:view', id, '--json', '--non-interactive'],
-      { cwd: join(process.cwd(), 'apps', 'mobile'), env },
+      { cwd: join(repoRoot(), 'apps', 'mobile'), env },
     );
     const jsonStart = stdout.indexOf('{');
     if (jsonStart < 0) return null;
@@ -249,10 +261,22 @@ export async function releaseCommand(args: string[]): Promise<void> {
   // 5. Deploy Worker (reads from R2 at request time → R2 upload must precede this
   //    for any schema change; for binary artifacts upload order doesn't matter,
   //    but we deploy worker first so new download routes go live before Pages).
-  if (flags.worker) await deployWorker(env);
+  if (flags.worker) {
+    try {
+      await deployWorker(env);
+    } catch (err) {
+      log.warn(`Worker 部署失败：${err instanceof Error ? err.message : err}`);
+    }
+  }
 
   // 6. Deploy Web to Pages.
-  if (flags.web) await deployWebPages(env);
+  if (flags.web) {
+    try {
+      await deployWebPages(env);
+    } catch (err) {
+      log.warn(`Web Pages 部署失败：${err instanceof Error ? err.message : err}`);
+    }
+  }
 
   // 7. Optionally wait for EAS build and upload APK.
   if (mobileBuildId && flags.waitMobile) {
@@ -294,7 +318,7 @@ export async function mobileUploadCommand(args: string[]): Promise<void> {
         '--json',
         '--non-interactive',
       ],
-      { cwd: join(process.cwd(), 'apps', 'mobile'), env },
+      { cwd: join(repoRoot(), 'apps', 'mobile'), env },
     );
     const jsonStart = stdout.indexOf('[');
     const list: EasBuildInfo[] = jsonStart >= 0 ? JSON.parse(stdout.slice(jsonStart)) : [];

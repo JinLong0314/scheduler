@@ -9,9 +9,9 @@ export const downloadRoutes = new Hono<{ Bindings: Env; Variables: Variables }>(
 // R2 key → { contentType, filename }
 const ARTIFACTS: Record<string, { key: string; contentType: string; filename: string }> = {
   'desktop/windows': {
-    key: 'desktop-windows.msi',
-    contentType: 'application/x-msi',
-    filename: 'kairo-setup.msi',
+    key: 'desktop-windows.exe',
+    contentType: 'application/vnd.microsoft.portable-executable',
+    filename: 'kairo-desktop.exe',
   },
   'desktop/linux-deb': {
     key: 'desktop-linux.deb',

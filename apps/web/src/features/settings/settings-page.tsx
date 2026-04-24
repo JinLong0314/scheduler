@@ -4,7 +4,7 @@ import { useAuthStore } from '../../shared/lib/auth-store';
 
 const DOWNLOADS = [
   {
-    label: '下载 Windows (.msi)',
+    label: '下载 Windows (.exe)',
     href: 'https://kairo-api.jackie-macau.top/desktop/download/windows',
   },
   {

@@ -11,7 +11,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
           'h-10 w-full rounded-[var(--radius-md)] px-3 text-sm outline-none transition',
           'border border-[color:var(--color-border)] bg-[color:var(--color-surface)]',
           'text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-muted)]',
-          'focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-ring)]/30',
+          'focus:ring-[color:var(--color-ring)]/30 focus:border-[color:var(--color-accent)] focus:ring-2',
           className,
         )}
         {...rest}
@@ -23,10 +23,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 export function Label({ className, ...rest }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn(
-        'mb-1 block text-xs font-medium text-[color:var(--color-fg-muted)]',
-        className,
-      )}
+      className={cn('mb-1 block text-xs font-medium text-[color:var(--color-fg-muted)]', className)}
       {...rest}
     />
   );

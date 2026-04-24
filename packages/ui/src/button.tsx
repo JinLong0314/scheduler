@@ -21,10 +21,8 @@ const variants: Record<ButtonVariant, string> = {
     'bg-[color:var(--color-accent)] text-[color:var(--color-accent-fg)] hover:bg-[color:var(--color-accent-hover)] shadow-[var(--shadow-sm)]',
   secondary:
     'bg-[color:var(--color-surface)] text-[color:var(--color-fg)] border border-[color:var(--color-border)] hover:bg-[color:var(--color-surface-muted)]',
-  ghost:
-    'bg-transparent text-[color:var(--color-fg)] hover:bg-[color:var(--color-surface-muted)]',
-  danger:
-    'bg-[color:var(--color-danger)] text-white hover:opacity-90 shadow-[var(--shadow-sm)]',
+  ghost: 'bg-transparent text-[color:var(--color-fg)] hover:bg-[color:var(--color-surface-muted)]',
+  danger: 'bg-[color:var(--color-danger)] text-white hover:opacity-90 shadow-[var(--shadow-sm)]',
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -38,6 +36,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref,
 ) {
   return (
-    <button ref={ref} type={type} className={cn(base, variants[variant], sizes[size], className)} {...rest} />
+    <button
+      ref={ref}
+      type={type}
+      className={cn(base, variants[variant], sizes[size], className)}
+      {...rest}
+    />
   );
 });

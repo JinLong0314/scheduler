@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  LOGIN_METHODS,
-  MAP_PROVIDERS,
-  MAX_REMINDERS_PER_EVENT,
-  THEME_IDS,
-} from './constants.js';
+import { LOGIN_METHODS, MAP_PROVIDERS, MAX_REMINDERS_PER_EVENT, THEME_IDS } from './constants.js';
 
 // ============================================================
 // Primitive schemas
@@ -56,7 +51,11 @@ export const registerInputSchema = z.object({
 export const reminderChannelSchema = z.enum(['web-push', 'desktop', 'mobile', 'email']);
 
 export const reminderSchema = z.object({
-  offsetMinutes: z.number().int().min(0).max(60 * 24 * 30),
+  offsetMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .max(60 * 24 * 30),
   channels: z.array(reminderChannelSchema).min(1),
 });
 

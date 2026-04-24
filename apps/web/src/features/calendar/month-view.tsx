@@ -1,13 +1,13 @@
-import { cn } from '@kairo/ui';
-import { useMemo } from 'react';
+﻿import { cn } from '@kairo/ui';
+import { useMemo, useState } from 'react';
+import { EventDetailDialog } from '../events/event-detail-dialog';
 import { useEvents, type EventItem } from '../events/use-events';
-import { useTodosRange, type TodoItem } from '../todos/use-todos';
+import { useTodosRange } from '../todos/use-todos';
 
 interface MonthViewProps {
   anchor: Date;
   onDayClick?: (iso: string) => void;
   selectedIso?: string;
-  /** Called when the user clicks "+" on a day cell to create a new item */
   onCreateClick?: (iso: string) => void;
 }
 
@@ -29,14 +29,16 @@ function isoDate(d: Date): string {
 
 function startOfMonthGrid(anchor: Date): Date {
   const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-  const dayOfWeek = first.getDay(); // 0 = Sun
-  const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday start
+  const dayOfWeek = first.getDay();
+  const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   first.setDate(first.getDate() - offset);
   first.setHours(0, 0, 0, 0);
   return first;
 }
 
 export function MonthView({ anchor, onDayClick, selectedIso, onCreateClick }: MonthViewProps) {
+  const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
+
   const gridStart = useMemo(() => startOfMonthGrid(anchor), [anchor]);
   const days = useMemo(
     () =>
@@ -70,13 +72,12 @@ export function MonthView({ anchor, onDayClick, selectedIso, onCreateClick }: Mo
     return map;
   }, [events]);
 
-  const todosByDay = useMemo(() => {
-    const map = new Map<string, TodoItem[]>();
+  const pendingByDay = useMemo(() => {
+    const map = new Map<string, number>();
     for (const t of todos) {
-      const k = t.scheduledDate;
-      const arr = map.get(k);
-      if (arr) arr.push(t);
-      else map.set(k, [t]);
+      if (!t.completed) {
+        map.set(t.scheduledDate, (map.get(t.scheduledDate) ?? 0) + 1);
+      }
     }
     return map;
   }, [todos]);
@@ -85,136 +86,115 @@ export function MonthView({ anchor, onDayClick, selectedIso, onCreateClick }: Mo
   const todayIso = isoDate(new Date());
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-lg">
-      {/* Weekday header */}
-      <div className="border-border bg-surface-muted/50 grid grid-cols-7 border-b">
-        {['一', '二', '三', '四', '五', '六', '日'].map((w, i) => (
-          <div
-            key={w}
-            className={cn(
-              'text-fg-muted py-2 text-center text-[11px] font-medium',
-              i >= 5 && 'text-weekend',
-            )}
-          >
-            {w}
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="grid flex-1 grid-cols-7 overflow-hidden">
-        {days.map((d, i) => {
-          const iso = isoDate(d);
-          const inMonth = d.getMonth() === currentMonth;
-          const isToday = iso === todayIso;
-          const isSelected = iso === selectedIso;
-          const isWeekend = i % 7 >= 5;
-          const dayEvents = byDay.get(iso) ?? [];
-          const dayTodos = todosByDay.get(iso) ?? [];
-          const pendingTodos = dayTodos.filter((t) => !t.completed);
-          const totalItems = dayEvents.length + dayTodos.length;
-
-          return (
+    <>
+      <div className="flex h-full flex-col overflow-hidden rounded-lg">
+        {/* Weekday headers */}
+        <div className="border-border bg-surface-muted/50 grid shrink-0 grid-cols-7 border-b">
+          {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((w, i) => (
             <div
-              key={iso}
+              key={w}
               className={cn(
-                'border-border group relative flex min-h-[88px] flex-col border-b border-r p-1.5',
-                i % 7 === 0 && 'border-l-0',
-                isWeekend && 'bg-[color:var(--color-weekend)]/8',
-                !inMonth && 'opacity-40',
-                isSelected && !isToday && 'bg-selected/10 ring-accent ring-1 ring-inset',
+                'text-fg-muted py-2 text-center text-[11px] font-medium',
+                i >= 5 && 'text-[color:var(--color-weekend)]',
               )}
             >
-              {/* Date header */}
-              <div className="flex items-start justify-between">
-                <button
-                  type="button"
-                  onClick={() => onDayClick?.(iso)}
-                  className={cn(
-                    'flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition',
-                    isToday
-                      ? 'bg-accent text-accent-fg shadow-sm'
-                      : 'hover:bg-surface-muted text-fg',
-                  )}
-                >
-                  {d.getDate()}
-                </button>
-
-                {/* + button on hover */}
-                <button
-                  type="button"
-                  onClick={() => onCreateClick?.(iso)}
-                  className="text-fg-muted hover:bg-surface-muted hover:text-accent flex h-5 w-5 items-center justify-center rounded text-[13px] font-light opacity-0 transition group-hover:opacity-100"
-                  title={`在 ${iso} 新建`}
-                  aria-label={`在 ${iso} 新建`}
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Item chips */}
-              <div className="mt-1 space-y-0.5 overflow-hidden">
-                {/* Events */}
-                {dayEvents.slice(0, 2).map((e) => (
-                  <div
-                    key={e.id}
-                    className="flex items-center gap-0.5 truncate rounded px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm"
-                    style={{ background: COLOR_KEYS[e.colorKey] ?? COLOR_KEYS.accent }}
-                    title={e.title}
-                  >
-                    {!e.allDay && (
-                      <span className="shrink-0 opacity-80">
-                        {new Date(e.startAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    )}
-                    <span className="truncate">{e.title}</span>
-                  </div>
-                ))}
-
-                {/* Todos */}
-                {dayTodos.slice(0, Math.max(0, 3 - dayEvents.slice(0, 2).length)).map((t) => (
-                  <div
-                    key={t.id}
-                    className={cn(
-                      'flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-[10px]',
-                      t.completed
-                        ? 'bg-surface-muted text-fg-muted line-through'
-                        : 'bg-surface border-border text-fg border',
-                    )}
-                    title={t.title}
-                  >
-                    <span
-                      className={cn('shrink-0', t.completed ? 'text-success' : 'text-fg-muted')}
-                    >
-                      {t.completed ? '✓' : '○'}
-                    </span>
-                    <span className="truncate">{t.title}</span>
-                  </div>
-                ))}
-
-                {/* Overflow */}
-                {totalItems > 3 && (
-                  <div className="text-fg-muted px-1.5 text-[10px]">+{totalItems - 3} 项</div>
-                )}
-              </div>
-
-              {/* Pending todos badge */}
-              {pendingTodos.length > 0 &&
-                dayTodos.length === pendingTodos.length &&
-                dayEvents.length === 0 && (
-                  <div className="absolute bottom-1 right-1.5">
-                    <span className="bg-warning/20 text-warning inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-semibold">
-                      {pendingTodos.length}
-                    </span>
-                  </div>
-                )}
+              {w}
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* Day grid */}
+        <div className="grid min-h-0 flex-1 grid-cols-7 overflow-hidden">
+          {days.map((d, i) => {
+            const iso = isoDate(d);
+            const inMonth = d.getMonth() === currentMonth;
+            const isToday = iso === todayIso;
+            const isSelected = iso === selectedIso;
+            const isWeekend = i % 7 >= 5;
+            const dayEvents = byDay.get(iso) ?? [];
+            const pendingCount = pendingByDay.get(iso) ?? 0;
+
+            return (
+              <div
+                key={iso}
+                onClick={() => onDayClick?.(iso)}
+                className={cn(
+                  'border-border hover:bg-surface-muted/40 group relative flex cursor-pointer flex-col border-b border-r p-1.5 transition-colors',
+                  i % 7 === 0 && 'border-l-0',
+                  isWeekend && 'bg-[color:var(--color-weekend)]/6',
+                  !inMonth && 'opacity-40',
+                  isSelected && !isToday && 'ring-accent bg-accent/5 ring-1 ring-inset',
+                )}
+              >
+                {/* Date number + actions row */}
+                <div className="flex items-start justify-between">
+                  <span
+                    className={cn(
+                      'inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium',
+                      isToday ? 'bg-accent text-accent-fg shadow-sm' : 'text-fg',
+                    )}
+                  >
+                    {d.getDate()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCreateClick?.(iso);
+                    }}
+                    className="text-fg-muted hover:text-accent flex h-5 w-5 items-center justify-center rounded text-[13px] opacity-0 transition group-hover:opacity-100"
+                    aria-label={`在 ${iso} 新建`}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Event chips */}
+                <div className="mt-0.5 min-h-0 space-y-0.5 overflow-hidden">
+                  {dayEvents.slice(0, 3).map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setSelectedEvent(e);
+                      }}
+                      className="flex w-full items-center gap-0.5 truncate rounded px-1.5 py-0.5 text-left text-[10px] font-medium text-white shadow-sm transition hover:brightness-110"
+                      style={{ background: COLOR_KEYS[e.colorKey] ?? COLOR_KEYS.accent }}
+                      title={e.title}
+                    >
+                      {!e.allDay && (
+                        <span className="shrink-0 opacity-80">
+                          {new Date(e.startAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      )}
+                      <span className="truncate">{e.title}</span>
+                    </button>
+                  ))}
+                  {dayEvents.length > 3 && (
+                    <div className="text-fg-muted px-1 text-[10px]">+{dayEvents.length - 3} 项</div>
+                  )}
+                </div>
+
+                {/* Pending todos badge */}
+                {pendingCount > 0 && (
+                  <div className="mt-auto pt-0.5">
+                    <span className="text-fg-muted text-[9px]">待办 {pendingCount} 项</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Event detail popup */}
+      {selectedEvent && (
+        <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
+    </>
   );
 }

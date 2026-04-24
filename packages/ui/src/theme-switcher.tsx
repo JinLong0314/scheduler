@@ -27,7 +27,7 @@ export function ThemeSwitcher({ className }: ThemeSwitcherProps) {
                   'border-[color:var(--color-border)] bg-[color:var(--color-surface)] text-[color:var(--color-fg)]',
                   'hover:border-[color:var(--color-border-strong)]',
                   active &&
-                    'border-[color:var(--color-accent)] ring-2 ring-[color:var(--color-ring)]/40',
+                    'ring-[color:var(--color-ring)]/40 border-[color:var(--color-accent)] ring-2',
                 )}
               >
                 <span aria-hidden className="text-lg leading-none">

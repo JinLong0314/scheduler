@@ -21,7 +21,9 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(f
 });
 
 export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-4 border-b border-[color:var(--color-border)]', className)} {...rest} />;
+  return (
+    <div className={cn('border-b border-[color:var(--color-border)] p-4', className)} {...rest} />
+  );
 }
 
 export function CardBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
@@ -29,5 +31,7 @@ export function CardBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>)
 }
 
 export function CardFooter({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-4 border-t border-[color:var(--color-border)]', className)} {...rest} />;
+  return (
+    <div className={cn('border-t border-[color:var(--color-border)] p-4', className)} {...rest} />
+  );
 }
